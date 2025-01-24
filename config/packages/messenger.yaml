@@ -1,0 +1,49 @@
+framework:
+    messenger:
+        failure_transport: failed
+
+        transports:
+            sync: 'sync://'
+
+            async:
+                dsn: '%env(APP_MESSENGER_TRANSPORT_DSN)%'
+                options: []
+#                    use_notify: true
+#                    check_delayed_interval: 60000
+                retry_strategy:
+                    max_retries: 3
+                    multiplier: 2
+
+            failed:
+                dsn: 'doctrine://default'
+                options:
+                    queue_name: failed
+
+        default_bus: app.command.bus
+
+        buses:
+
+            app.command.bus:
+                default_middleware:
+                    enabled: true
+                    allow_no_handlers: false
+                    allow_no_senders: true
+                middleware:
+                - validation
+                - doctrine_transaction
+
+            app.event.bus:
+                default_middleware:
+                    enabled: true
+                    allow_no_handlers: true
+                    allow_no_senders: true
+                middleware:
+                - validation
+
+        routing:
+            # APP
+            App\Messenger\Query\*: sync
+            App\Messenger\Command\*: sync
+            App\Messenger\Event\*: async
+            # NOTIFIER
+            Symfony\Component\Notifier\*: sync

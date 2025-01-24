@@ -1,0 +1,8 @@
+#framework:
+#    html_sanitizer:
+#        sanitizers:
+#            default:
+#                allow_safe_elements: true
+#                allow_static_elements: true
+#                allow_elements:
+#                    head: '*'

@@ -1,0 +1,16 @@
+# Slash "/" at the end is needed for dirs
+imports:
+# priority (low)
+-   resource: 'services_rest.yaml'
+-   resource: 'parameters/'
+-   resource: 'services/'
+-   resource: 'client/'
+# priority (hight)
+# "when@*" always overrides
+
+when@test: &when_test
+    imports:
+        # priority (low)
+    -   resource: 'test/services/'
+    -   resource: 'test/parameters/'
+         # priority (hight)

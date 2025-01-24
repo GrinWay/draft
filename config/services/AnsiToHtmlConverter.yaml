@@ -1,0 +1,11 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    SensioLabs\AnsiConverter\AnsiToHtmlConverter:
+        class: SensioLabs\AnsiConverter\AnsiToHtmlConverter
+        arguments:
+            $theme: !service
+                class: SensioLabs\AnsiConverter\Theme\SolarizedTheme
+            $inlineStyles: false

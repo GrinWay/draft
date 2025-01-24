@@ -1,0 +1,86 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: Symfony
+
+on:
+  workflow_dispatch: ~
+#  schedule:
+#    - cron: '*/5 * * * *'
+  #  push: ~
+#on:
+#  push:
+#    branches: [ "main" ]
+#  pull_request:
+#    branches: [ "main" ]
+
+env:
+  APP_ADMIN_EMAIL: ${{ secrets.APP_ADMIN_EMAIL }}
+  APP_ADMIN_MAILER_LOGIN: ${{ secrets.APP_ADMIN_MAILER_LOGIN }}
+  APP_ADMIN_MAILER_PASS: ${{ secrets.APP_ADMIN_MAILER_PASS }}
+  APP_DB_DOP_QUERY_PARAMS: ${{ secrets.APP_DB_DOP_QUERY_PARAMS }}
+  APP_DB_HOST_IP: ${{ secrets.APP_DB_HOST_IP }}
+  APP_DB_NAME: ${{ secrets.APP_DB_NAME }}
+  APP_DB_PASS: ${{ secrets.APP_DB_PASS }}
+  APP_DB_USER: ${{ secrets.APP_DB_USER }}
+  APP_MAILER_MAILGUN_TRANSPORT_API_KEY: ${{ secrets.APP_MAILER_MAILGUN_TRANSPORT_API_KEY }}
+  APP_MAILER_MAILGUN_TRANSPORT_DOMAIN: ${{ secrets.APP_MAILER_MAILGUN_TRANSPORT_DOMAIN }}
+  APP_TEST_EMAIL: ${{ secrets.APP_TEST_EMAIL }}
+  MERCURE_JWT_SECRET: ${{ secrets.MERCURE_JWT_SECRET }}
+  APP_DEFAULT_LOCALE_SHORT: ru
+
+permissions:
+  contents: read
+
+jobs:
+  symfony-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+    #  To automatically get bug fixes and new Php versions for shivammathur/setup-php,
+    # change this to (see https://github.com/shivammathur/setup-php#bookmark-versioning):
+    # uses: shivammathur/setup-php@v2
+    - name: Download the repository
+      uses: actions/checkout@v4
+      
+    - name: Copy ".env.test" to ".env.test.local"
+      run: php -r "file_exists('.env.test.local') || copy('.env.test', '.env.test.local');"
+      
+    - name: The php installation
+      uses: shivammathur/setup-php@2cb9b829437ee246e9b3cac53555a39208ca6d28
+      with:
+        php-version: '8.4'
+        
+    - name: Cache composer packages
+      uses: actions/cache@v3
+      id: composer-cache
+      with:
+        path: vendor
+        key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-php-
+          
+    #-  name: The composer deps installation
+    #   run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+    - name: The composer deps installation
+      uses: "ramsey/composer-install@v2"
+       
+    -  name: The npm installation
+       run: npm ci
+       
+    #- name: The yarn installation
+    #  uses: mskelton/setup-yarn@v3
+    #- name: The yarn deps installation
+    #  run: yarn install --force -s
+    - name: All Tests
+      run: vendor/bin/phpunit tests/
+
+    # Using this Kernel doesn't boot itself
+    #- name: Drop the test database
+    #  uses: "nucleos/symfony-console-action@1.0.0"
+    #  with:
+    #    kernel: "App\\Kernel"
+    #    command: "doctrine:database:drop -f --env test"

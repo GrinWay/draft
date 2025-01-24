@@ -1,0 +1,18 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    Symfony\Component\Ldap\Ldap:
+        arguments:
+        - '@Symfony\Component\Ldap\Adapter\ExtLdap\Adapter'
+        tags:
+        - ldap
+    Symfony\Component\Ldap\Adapter\ExtLdap\Adapter:
+        arguments:
+        -   host: '%env(APP_LDAP_HOST)%'
+            port: '%env(APP_LDAP_PORT)%'
+            encryption: tls
+            options:
+                protocol_version: 3
+                referrals: false

@@ -1,0 +1,2533 @@
+PHP HEADERS
+	?
+	+ возможно ли отобразить картинку, которая не сохранена, то есть я имею только бинарное содержимое
+		(
+		ДА, просто передай Content-Type: 'image/png' заголовок
+		браузер сам отобразит элемент <img>
+		)
+SYMFONY ROUTE
+	?
+	+ почему меня перебрасывает на https (потому что срабатывает resource schemes для аттрибутов Route)
+	+ ?как установить _fragment в Route (при генерации пути передай _fragment в переменные роута)
+	зачем options в route и можно ли их модифицировать в ControllerEventListener
+	+ RequestStack or Request (Request)
+	+ use Session in stateless route (Exception)
+SYMFONY SECRETS
+SYMFONY CONTROLLER
+	?
+	#[MapUploadedFile] UploadedFile $filename
+	использовать class Map* (MapRequestPayload, MapDateTime, MapQueryParameter, MapQueryString)
+SYMFONY COOKIE
+SYMFONY SESSION
+SYMFONY HTTP FOUNDATION
+	?
+	? Какая разница
+		$request->getBasePath()
+		$request->getBaseUrl()
+	+ как в request УСТАНОВИТЬ не скалярное значение (можно)
+SYMFONY DOCTRINE
+	?
+	? что за тип varbinary(255) и зачем используется
+	? что за тип mediumblob и зачем используется
+	? как вместо аттрибутов описать колонки в config/doctrine/*.xml
+	?не получилось добавить функцию dql doctrine
+	?кто отвечает за порядок расположения столбцов
+	кто отвечает за именование полей в базе данных
+	есть какое-то ограничение на выбор стороны держателя OneToOne
+	?в каком формате сохранять интервал CarbonInterval
+	?в каком формате сохранять период CarbonPeriod
+	Что конкретно делает ORM\Embedded
+	как изменить тип записи datetime в базу данных (dbal:doctrine.dbal.types.datetime_immutable.MyClass)
+	setHint(Query::HINT_REFRESH, true) вообще работает?
+	бекап базы данных
+	получить запись из db по uuid
+	https://habr.com/ru/companies/wunderfund/articles/685894/
+	https://symfony.com/doc/current/session.html#migrating-between-session-handlers
+	toIterable https://symfony.com/doc/current/components/http_foundation.html#streaming-a-json-response
+	разница ObjectManager EntityManager #[MapEntity(objectManager: '')]
+	гидротация только одного объекта
+	разница Query::execute Query::getResult
+	сдеалть своего purger
+	doctrine add hint (download from db)
+	make:fixtures
+SYMFONY MESSENGER
+	?
+	? реализовать собственный транспорт и понять зачем такие методы как ack()
+	? если есть doctrine_transaction middleware выкидывает исключение нет активной транзакции при $bus->dispatch(new RunCommandMessage()) а зачем интересно было бы знать
+	? попробовать выкинуть свой App\Exception\Messenger\StopPropagationException в handler чтобы не обрабатывать envelope оставшимися handler в своём EnvelopeStopPropagationMiddleware(вернуть просто изначальный $envelope, что нам мешает это сделать) (priority будет нужна как никогда)
+	? на сколько понимаю middleware send_message играет очень важную роль так как:
+		вызывает stack::next() если есть ReceivedStamp (receive message -> worker bus::dispatch(envelope with state, ReceivedStamp))
+		receive вызывает worker::dispatch
+		что провоцирует повторный вызов всей цепочки middlewares
+		в этот момент если не вызвать в НАШЕМ middleware stack::next middleware handle_message достигнут не будет
+		и обработчики не вызывутся
+	? как messenger.middleware.reject_redelivered_message_middleware предотвращает повторный вызов остальных middlewares если это worker вызвал bus::dispatch после received from transport
+		скорее всего он пологается на SentStamp, так как:
+			SYNC worker called dispatch: has SentStamp (проблемка определения, так как есть и при нашей отправке и при отправке by worker)
+			ASYNC worker called dispatch: has NO SentStamp (тут можно определить, так как вызов от worker не несёт в себе SentStamp)
+	+ ??? не до конца понятно как работает Symfony\Component\Messenger\Middleware\DispatchAfterCurrentBusMiddleware
+		(
+			принцип => middleware может не закончить до конца свою работу
+			а все handlers для envelope были вызваны
+		
+			так как этот middleware есть у каждого bus
+			когда bus::dispatch -> bus(middleware[all]::handle)
+			входя в первый раз в DispatchAfterCurrentBusMiddleware это не считается, так как это первый вызов
+			затем "рекурсивно"(we bus::dispatch, worker bus::dispatch) дважды вызывается
+			$stack->next()->handle() что вызывает все handlers первого dispatched Envelope
+			а если были bus::dispatch внутри просто сохроняем их и выходим возвращая $envelope
+			так как для вложенного $envelope не было ни единого вызова $stack->next()->handle()
+			middlewares ниже DispatchAfterCurrentBusMiddleware вызваны не были
+			то есть даже отправки не произошло, а
+			__внешний envelope уже был обработан всеми handlers__
+			после этого из стека достаются $stack и $envelope и делается $stack->next()->handle()
+			после чего происходит их отправка причём если это sync транспорт
+			повторный вызов middlewares выполняется немедленно
+			DispatchAfterCurrentBusMiddleware вызывает $stack->next()->handle() второй раз
+			__все вложенные handlers выполнены__
+		)
+	+ ?stamp это обмен информацией между middlewares определённого обработчика. (Stamp нужен просто для обмена информацией между middlewares, обработчики не при чём)
+	+ middlewares вызываются при BUS::dispatch, (когда Envelope отправлен нами или после Received) (middlewares определяют будут или не будут вызываться handlers)
+	+ Как Handlers выполняются при исключениях (Независимо от исключений выполняются все handlers)
+	+ Что вернётся если сработало 2 синхронных обработчика?? Dispatched синхронное сообщение, на которое нашлось 2 обработчика, по идее должно назначиться 2 handled stamp
+		Да, и более того если конверт имеет определённый тип марки, то это всегда массив
+		Синхронным или асинхронным может быть сообщение(за счёт транспорта), а не обработчик.
+		Таким образом для одного и того же сообщения обработка идёт либо везде синхронно или асинхронно
+	+ Удалиться или останется сообщение, которое было обработано не всеми обработчиками (выбрасывать repeatable) мне кажется что останется, так это значит при следующем приёме вызываются те же самые обработчики?!
+		Сообщение обработается всеми обработчиками в любом случае. Останется сообщение или нет зависит от обработчика(успеха, исключения)
+		Есть риск многократного исполнения одного и того же Handler при неудаче в другом Handler одного и того же сообщения, так как сообщение может не удалиться (если только в обработчике не выбрашено UnrecoverableMessageHandlingException)
+		Так что лучше делать bus::dispatch внутри другого handler with DispatchAfterCurrentBusStamp (вложенно) это гарантирует обработку next handler после успешного выполнения текущего
+	+ Зачем нужна коллекция id сообщений в транспорте Symfony\Component\Messenger\Stamp\TransportMessageIdStamp
+		Коллекция id с БД (копятся при неудаче)
+	+ middlewares (вызываются bus::dispatch или когда worker calls bus::dispatch)
+	+ ?StackInterface::next()::handle() (вызывает следующий middleware)
+	???Symfony\Component\Messenger\Stamp\AckStamp
+	???SendMessageMiddleware
+	Прервать вызов MessageHandler по SomeStamp, когда был вызван особый обработчик (после которого других обработчиков вызывать не нужно)
+	bin/console messenger:stats Transport implements MessageCountAwareInterface
+	MyTransport implements QueueReceiverInterface bin/console messenger:consume —all —queues=h
+	есть или нет транзакиии в handlers
+	custom serializer for messenger
+	Как в BatchHandler отправить Acknowledger
+	обязательно ли оставлять doctrine_ping_connection middleware после handle_message
+	почему middleware вызывается дважды от GET, и от WORKER
+	ещё не разу не смог отправить сообщение при исключении в command handler
+	https://github.com/sroze/messenger-enqueue-transport
+SYMFONY PROPERTY ACCESS COMPONENT
+	?
+	key]1 (закрывающая квадр. скобка) не парсит
+SYMFONY PROPERTY INFO COMPONENT
+	?
+	реализовать PropertyDocBlockExtractorInterface и передать в descriptionExtractors of PropertyInfoExtractor
+SYMFONY ENV PROCESSOR
+SYMFONY YAML PARSER (TAGS)
+	?
+	kernel.default_locale от чего зависит
+SYMFONY SERVICE CONTAINER
+	?
+	+ ? Вопрос вот в чём: можно ли получать массив service locator, динамически в CompilerPass заполнив какой-нибудь сервис
+		а не за счёт dependency injection
+		(
+			Да, но есть ограничения на те definitions, которые должны быть в service locator
+				нельзя пользоваться methodCalls (только dependency injection with __construct)
+				никакие теги больше не учитываются (то есть сортировка по priority tag attribute на тебе)
+				CompilerPass не может принимать Object (Closure), Resourse
+			Эти ограничения связаны с тем, что service container сохраняется в кеш
+		)
+	???R: почему не работает моя инструкция stack, в отличии от исправной decorates
+		# NOT WORKS
+		app.throttling_http_client_decorator:
+			stack:
+			-   class: Symfony\Component\HttpClient\ThrottlingHttpClient
+				arguments: 'SAME_ARGS'
+			-   class: Symfony\Contracts\HttpClient\HttpClientInterface
+			
+		# WORKS
+		app.throttling_http_client_decorator:
+			decorates: Symfony\Contracts\HttpClient\HttpClientInterface
+			class: Symfony\Component\HttpClient\ThrottlingHttpClient
+			arguments: 'SAME_ARGS'
+	? сделать вариацию service aliases динамически, в зависимости от конфига (config -> containerBuilder::setAlias('TYPE $newAliasByConfigName', '.EXISTING_HIDDEN_SERVICE_ID')
+	+ ? как в сервисе получить env переменную, так как в ParameterBagInterface её нет
+		ENV получаем через @container.getenv closure
+	? возможно стоит использовать bind только в автоматически протянутых сервисах services.yaml.imports.services.auto когда в services.yaml нет ничего кроме imports
+	+ ? может ли container->getParameterBag()->resolveValue разрешить env (разрешает в вид: env_b6b8ae882b5a6588_APP_ENV_33ecddc04a0f12187e466dc7d02e9db6)
+	+ ? services.yaml: при использовании imports when@(dev, prod, test) доступно ли то, что определено без when@ конструкции (естественно)
+	+ ? services.yaml: есть ли способ перезаписать сервисы, определённые в services.yaml (элементарно через when@dev, prod, test те же самы imports которые не переопределяют свервисы внутри себя, но так как был указан environment одно переопределние на сервис возможно)
+	что делает services.yaml>services>SOME_SERVICE> properties настройка
+	+ Как сервис может получить доступ ко всем аргументам метода контроллера (слушая ControllerArgumentsEvent)
+	??В каком случае сервис нельзя подтянуть как аргумент контроллера
+		Или в чём разница команд debug:container, debug:autowire
+	Запросить в extension сервис, который ещё не успел попасть в контейнер
+	реализовать проход компилятора для тега (app.set_callable_result, method, args) чтоб был найден метод (SetCallableResultInterface) класса для снабжения данными тегированного
+	разница в проходах компилятора PassConfig::TYPE_BEFORE_OPTIMIZATION PassConfig::TYPE_AFTER_REMOVING
+	удалить env переменную в бандле, чтоб не торчал
+	что фактически делает запись service_id: ~
+	как работает опция services: #prototype#: (from_callable:)
+	register extension https://symfony.com/doc/current/doctrine/custom_dql_functions.html
+	NOTE Как лениво провести сервис:
+		lazy: true #[Lazy] #[Autoconfigure(lazy: true)]
+		!tagged_locator !tagged_iterator
+		!service_locator new ServiceLocator in yaml
+		!service_closure #[AutowireServiceClosure]
+		!closure #[AutowireMethodOf]
+	add yaml custom tag
+		!tagged_locator !tagged_iterator !service_closure !closure !service_locator !abstract !service !returns_clone
+		!php/const !php/enum !php/object
+		!!str !!float !!binary
+	удалить сервис в зависимости от APP_ENV
+	провести абстрактный аргумент в compiller pass
+	Expressions can be used in arguments, properties, as arguments with configurator, as arguments to calls (method calls) and in factories
+	services.yaml можно ли в factory: сослаться на сервис который создаёшь?
+	как правильно импортировать файлы конфигурации services.yaml (есть проблемы)
+	Что делает: AutowireDecorated
+	как _defaults: bind в бандле? (Definition::setBindings ?)
+	!!! Как добавить тег к Psr\Log\LoggerInterface
+	+ по неизвестной причине некоторые сервисы не могут попасть в коллекцию по тегу
+		но #[AutowireLocator] лениво подтягивает сервисы успешно
+		Psr\Log\LoggerInterface тегирую, а получить в коллекцию !tagged_locator не могу, а через !service_locator могу
+		(
+			Так нет потому что у LoggerInterface тега в момент заполнения !tagged_locator
+		
+			Просто проверь на всякий случай bin/console debug:container --tag="<>"
+			есть ли у сервиса тег
+			
+			Особые сомнения вызывают определения сервисов, которые были созданы за счёт конфигурации в бандле или проходе компилятора
+			так как просто ->addTag мог не вызываться
+			
+			При наследовании интерфейса или использовании Аттрибута вероятность, что сервис имеет тег выше,
+			так как предполагается, что будет коллекция однотипных классов
+			и нужно будет иметь возможность собрать их всех для дальнейшей настройки чего-то в CompilerPass
+			или собрать их в сервисе...
+			А для этого нужен тег, чтобы коллекция сервисов была доступна:
+				в сервисах, контроллерах: !tagged_(locator|iterator)
+				в bundle(когда контейнер полностью собран), CompilerPass: containerBuilder::findTaggedServiceIds
+			Реализовав: _instanceof в services.yaml, (registerAttributeForAutoconfiguration|registerForAutoconfiguration) в CompilerPass
+			
+			При определении сервиса в services.yaml мы вообще сами вручную можем указать теги
+		)
+	Psr\Log\LoggerInterface тегирую, а получить в коллекцию !tagged_locator не могу
+	REQUIRED!!!:
+		1) Psr\Log\LoggerInterface тегирую, а получить в коллекцию !tagged_locator не могу
+			может быть не Psr\Log\LoggerInterface тегировать нужно, а конкретный service id: 'monolog.logger.<CHANNEL>' например.
+			Мне кажется всё дело в том, у сервисов, создаваемых Monolog с помощью monolog.yaml при объявлении канала
+			просто на просто не присваивается никаких тегов,
+			как раз в отличии от Rate Limiter Factory при описании во framework.rate_limiter
+			там сервисам автоматически назначается rate_limiter tag
+		2) поэксперементируй и промоделируй всевозможные сценарии использования !tagged_locator со своим тегом
+		app_test_tag например, чтобы понять в каких случаях ты получаешь сервис в коллекцию 
+		И ЧТО САМОЕ ИНТЕРЕСНОЕ когда ты НЕ ПОЛУЧАЕШЬ сервиса, который тег имеет, но в коллекцию не попадает
+		то есть возможно ли такое что !tagged_locator срабатывает быстрее назначения тега
+		то есть тег есть, а в коллекции сервиса нет из-за позднего назначения тега.
+		Может если сервис создаётся в CompilerPass (как это обычно бывает при конфигурировании сервисов бандла)(и тег там не назначается), а назначается он где-нибудь в другом месте.
+		Мне честно кажется невозможной ситуация, при которой сервис имеет tag, а быть собранным по нему с помощью !tagged_locator не может
+	services.yaml namespace-path не назначает теги как следует, нужно использовать _instanceof
+	как по Definition получить DEFINITION_SERVICE_ID из container
+	Как изменить Definition так, чтобы возвращался Closure определённого метода
+		И ВЫЗВАТЬ ЕГО МОЖНО БЫЛО НЕСТАТИЧЕСКИ (new Reference)
+	decorator pattern https://symfony.com/doc/current/service_container/service_decoration.html
+	!!! КАК В COMPILER PASS ПЕРЕДАТЬ \Closure например от метода сервиса в аргумент у Definition (создать Definition(Closure))
+SYMFONY DependencyInjection Component
+SYMFONY CONFIGURING SYMFONY 
+	?
+	извлечь используя extractor docBlock @return
+SYMFONY EXPRESSION LANGUAGE
+	?
+	+ чекнуть (за счёт expressionLanguageProviderDecorator) какие переменные есть в services.yaml expressionLanguage (variables: container, args)
+SYMFONY EVENTS
+	?
+	??? слушатель зарегестрирован в dispatcher, а при отправке события не вызывается
+		form events ("form.pre_submit") не обрабатываются сервисами слушателей
+	как узнать список всех диспетчеров
+	реализовать в dockBlock: controllerArgumentsMethodDbEventListener: METHOD(RESULT_OF_REPOSITORY, ...REST_ARGrinWay_OF_METHOD)
+	addDopInfoForControllerArgumentResolvers: сделать свой AppEventDispatcher, app.event_listener #[AppEventListener(TARGET_CLASS | TARGET_METHOD)] собрать все Closure слушателей и вызвать при событии
+The EventDispatcher Component https://symfony.com/doc/current/components/event_dispatcher.html
+TWIG
+	1) https://twig.symfony.com/doc/3.x/functions/language_names.html
+	2) https://twig.symfony.com/doc/3.x/advanced.html#globals
+	https://symfony.com/doc/current/templates.html
+	?
+	Как вызвать Closure в шаблоне
+	The TwigBundle registers an ErrorListener that forwards the Request to a given controller defined by the exception_listener.controller parameter
+SYMFONY TWIG COMPONENTS
+	?
+	+ ? Не получается в twig component указать аттрибутом stimulus функцию
+		<twig:grinway:btn
+			{{ stimulus_action('clip', 'copy', 'click') }}
+		/>
+		(
+			Тэг html twig принимает аттрибуты по другому
+			в отличии от обычных html тэгов
+			
+			а именно twig component может принять аттрибут(в виде РАСПАКОВАННОГО массива ...[])
+			обычный html тэг принимал бы сразу строчку (ключ="значение")
+			
+			тот факт, что twig component способен принимать распакованный массив в аттрибут
+			до сих пор поражает меня
+		)
+	attributes.defaults можно перезаписать, а класс добавится
+	cva(compoundVariants) зачем class (странное название, не имеет отношение к выбираемому аттрибуту, просто значение, которое вернётся)
+	как каждый раз вызвать метод а не получать computed, который по умолчанию (вызов через this)
+SYMFONY FORMS
+	?
+	+ ? неужели для того чтобы работали setter и getter опции необходимо чтобы базовой моделью был объект (ДА!, поэтому если твои базовые данные не объект используй слушателей событий)
+	+ ? как пользоваться form_attr ((PREREQUISITE)form#id=getBlockPrefix + form_attr = true)
+	+ ? Отправляю форму, а она !form::isSubmitted, это как-то связано с form_attr (данные в $_POST не отправляются потому что если элемент формы имеет form attribute со значением отсутствующего form id данные не отправляются)
+	+ почему в самом типе формы я не могу воспользоваться методом form::getName ($this->getName) (потому что этот метод принадлежит клиентскому объекту формы, а не типу формы)
+	? так-то судя по шаблону встроенной темы "form_div_layout.html.twig" атрибут data-prototype к collection_widget должен добавляться автоматически 
+	+ ?Не знаю как исправить но для TranslatableMessage нужно явно передать домен для перевода (в FormTypeExtension определить тип label и если это TranslatableMessage установить домен)
+	+ ? С помощью FormTypeExtension не могу установить default translation_domain, label_format... для перевода (просто задай приоритет -1, чтобы успеть задать свойства до их фактического перевода)
+	+ ? почему определив FormTypeExtension у меня не получается установить translation_domain для определения домена по умолчанию (потому что тебе передаётся копия массива олень)
+	ButtonType: не могу найти место где делается unset($view->vars['attr']['type']) чтобы нельзя было переопределить тип из options[attr]
+		если бы я это делал, я бы создал ButtonTypeExtension
+	? какова причина не назначения add(options) в FormType (так как тип указан явно не был, он пытался определиться через modelData(originObject) даже не смотря на то что определение типа формы mapped => false)
+	+ ? Не знаю почему, но в CollectionType prototype attribute doesn't show up (это не происходт автоматически, назначь сам этот атрибут со значением из formView.vars.prototype)
+	+ ? не получается опустошить $view->vars['errors'] в FormTypeExtension чтобы ошибки не выводились (priority не влияет)
+		(
+			всё получается, опустошается
+			просто вывод со стилем ошибки из-за $view->vars['valid']
+		)
+	? думаю так и было задумано, что 'constraints', указанные на уровне root будут отображатся на уровне root
+		https://symfony.com/doc/current/form/without_class.html#constraints-at-class-level
+	?из за неизвестной причины не рисуется csrf_token (csrf_protection: true везде)
+		.\src\Security\Authenticator\Auth2FA\DefaultTwoFactorFormRenderer.php
+	добавить своё hidden poly в finishView(попробовать немного нарушить правила и сделать это в buildView) через FormTypeExtension
+		очень хороший пример FormTypeCsrfExtension
+	+ где добавляется _csrf_token в form view (FormTypeExtension(FormType) finishView view->children)
+	+ где проверяется _csrf_token в системе форм (eventSubscriber preSubmit)
+	+ как так выходит что через форму нельзя получить _csrf_token (так у тебя и нет child form type _csrf_token в твоём определении типа формы!)
+	+ как в сервисе получить _token csrf защиты (раз через форму нельзя, получу данные через request->getPayload())
+	+ в каких случаях не читается data option form type (PasswordType(data не читается))
+	+ почему после отправки формы с PasswordType.hash_property_path пароль не хэширован (потому что PasswordFormTypeExtension лишь заполняет свой сервис данными о хешировании)
+	???не получилось вынести элементы формы за её пределы, чтобы они отправились
+		https://symfony.com/doc/current/reference/forms/types/form.html#form-attr
+	??как не выводить ошибки от form_start(), form()
+	?как назначить ошибку form::addError целой форме чтобы она выводилась ровно 1 раз
+	?в каких случаях можно использовать options 'form_attr' => true,
+	абсолютно не понятно зачем опция is_empty_callback
+	+ DateType widget:text не выводит placeholder (задай через attr.placeholder)
+	?реализовать и добавить в bundle CarbonTimeZoneFormType (с трансформатором IntlTimeZone::raw_offset -> +00:00)
+	не получилось задать empty_data в виде массива compoundFormType
+		$resolver
+            ->setDefaults([
+				'empty_data' => [
+					'address' => '',
+					'car' => '',
+					'house_number' => '',
+					'descriptionForOld' => '',
+				],
+            ])
+			->setAllowedTypes('address_list', ['array', 'null'])
+        ;
+	Не знаю какой, но есть критерий(может по form type) по которому form::submit(payload)|form::handleRequest(request)
+		может не передать данные формы в исходные данные(объект)
+		есть тип формы и я в ручную добавляю в payload данные, которых не было до этого (request->files в request->request)
+		при этом тип формы содержит поле, которое я добавляю в payload
+		но свойство объекта не назначается значением из формы
+	как установить значение в поле, после возникновения ошибки (валидации например)
+	? The label_format option is evaluated in the form theme. Make sure to update your templates in case you customized form theming.
+	реализовать FormTypeGuesser для maxlen=3 pattern="^\b100\b|\b[0-9]{1,2}\b$" свойства с именем percent
+	NOTE вся валидация проиходит после событий
+	при создании формы пользователя возникает ошибка
+		Cannot assign string to property App\Entity\Product\Product::$createdAt of type ?DateTimeInterface
+	?Не могу понять из-за чего встроенный тип формы не может попасть в Request::getPayload
+	Как переопределить maxlength в типе формы без создания угадывателя типа
+	Как выводить форму редактирования пользователя если у него есть абстрактный вид продукта (сделать не абстрактным, а для формы добавить трансформер чтобы нужный тип объекта с формы делал)
+	как bootstrap определяет темы (block form_label например)
+	почему при использовании CallbackTransformer мне не приходит параметр, который нужно трансформировать
+	CollectionType allow_delete=true не вызывает удаление элемента коллекции
+		Каким образом результирующий объект содержит переданное кол-во collection
+	как отобразить сообщение об ошибке над конкретным полем (false === compound)
+	каждый элемент с label, кроме самого наружнего, это _row()
+	+ не уверен, но кажется form_start() содержит в себе form_errors() (да содержит, и form, form_start, form_row тоже)
+	для типа uuid нужен похоже свой трансформер
+	как определить имя блока коллекции
+	даже если указан класс data_class как запретить создавать объект от него (например потому что он абстрактный)
+	вывести Id но запретить его изменение на уровне backend
+	как запретить вывод всех полей типа формы: только form.name, form.age (без определённых полей)
+	почему не переопределяет элемент формы по пользовательскому типу [app_test_large_form]_[widget]
+	как отрисовать только определённую часть всех типов форм, но [form]_label() как буд-то не все типы
+		почему не переопределяет каждый тип [form]_[widget]
+	+ как убрать легенду из формы (отрисовывать её как form || form_widget, а не form_row)
+	что за методы $form->getParent() $form->getConfig()
+	как не включать form_widget element
+		заменить input csrf_token не включаяя его, а используя render_hinclude когда страница закеширована
+	make:form
+	? зачем PUT, PATCH or DELETE
+	проверить что в $form не передаются hidden поля из POST
+		не получается из формы получить поле _token $form->get('_token')->getData() хотя getPayload справляется
+	когда узнаю _token id и научусь переопределять input _token widget попробовать динамический csrf_token с IsCsrfTokenValid(new Expression)
+	как добавлять ошибки в form_errors
+		если произошло исключение при трансформации (TransformationFailedException)
+		в errors формы добавляются ошибки
+	реализовать DataTransformer для CollectionType
+		неужели DataTransformer не может работать с коллекцией
+			Пустые элементы коллекции создаются PRE_SET_DATA ResizeFormListener
+			А заполняются позже после нормализации
+	Имеет ли смысл DataTransformer для ChoiceType (похоже нет: Data transformers change the representation of a single value)
+	реализовать DateTime разбить на разные поля Год Месяц Дата Время
+	как использовать empty_data с \Closure
+	реализовать тему для YearMonthDayHourMinuteSecondType
+		{%- block app_year_month_day_hour_minute_second_widget -%}{%- endblock -%}
+	? если использовать DataMapper может ли значение после mapFormsToData быть null
+	слушая событие формы например "onPostSetData" как модифицировать элемент формы, а не просто удалить (удалить старый и добавить новый)
+	как управлять последовательностью полей типа формы
+	не понимаю есть ли преимущества у form.submit или form.post_submit в отличии от form.pre_submit (есть, в используемых трансформерах)
+	почему иногда unset($payload['key']); $form->submit($payload, clearMissing: true) очищает поля сущностей, а иногда нет
+	не получается в root form type configureOptions для определённого поля указать constraints (?фича удалена)
+SYMFONY VALIDATOR
+	?
+	+ ? возможно ли GroupSequenceProvider переместить в config/validator чтобы он был как бы в ограничениях
+		(НЕТ, так как он не наследует ограничение, это так же означает что тебе придётся навсегда оставить framework.validation.enable_attributes to true чтобы иметь возможность в зависимости от состояния модели, на которой висит аттрибут GroupSequenceProvider, вернуть группы валидации)
+	+ ? Проверить кто победит: Установить у класса коллекции ограничение Traverse: false чтобы его элементы не валидировались, а у держателя коллекции установи Valid над коллекцией
+		Я ставлю на то, что проверка свойств \Traverseable будет (Да, Valid побеждает)
+	зачем метод setInvalidValue у ConstraintViolationBuilder
+	+ Возможно ли ограничить способы валидации (-Attributes, -loadMethod, +addYamlMappings) (естественно, просто настрой framework.validation)
+	ExpressionSyntax constraint имеет косяк, даже когда моя функция добавлена через provider
+		ExpressionSyntax всё равно не видит её
+	что за property options: cascadeStrategy, autoMappingStrategy, traversalStrategy
+	+ не проходит RU-ru, только ru_RU https://symfony.com/doc/current/reference/constraints/Locale.html не работает canonicalize (создал свой FormTypeExtension и установил для него data transformator)
+	непонятное ограничение https://symfony.com/doc/current/reference/constraints/Cidr.html#basic-usage
+	Constraints\Valid работает ли на Collection
+	Length or Range используются формой для аттрибута html5 maxlenght
+	+ Как заставить читать ограничения коллекции (Cascade, Valid)
+	+ Как включить ограничение EnableAutoMapping глобально (через настройки бандла фреймворка, framework.validation.auto_mapping.Namespace[])
+	достать ClassMetadata определённого класса и добавить ограничение Callback
+	?назначить Traverse на класс коллекции, а в классе, который использует коллекцию не указывать Valid или Cascade
+	 будет ли проверка элеметов коллекции
+SYMFONY UPLOAD FILES
+	***
+	https://github.com/dustin10/VichUploaderBundle/blob/master/docs/namers.md#directory-namer
+	https://github.com/dustin10/VichUploaderBundle/blob/master/docs/file_namer/howto/create_a_custom_file_namer.md
+	https://github.com/dustin10/VichUploaderBundle/blob/master/docs/other_usages/replacing_file.md
+	?
+	?Как загрузить папку
+		еще момент If a directory was uploaded, getClientOriginalPath() will contain the webkitRelativePath as provided by the browser. Otherwise this value will be identical to getClientOriginalName().
+	?Как request->files обрабатывается при form::submit
+	?Как валидировать сущность с UniqueEntity по полю типа File (когда форма отправляет файл)
+	Если в Request::payload не попадают загружаемые файлы тогда как обработать только поле файла FormFile::submit (добавь в payload данные из Request::files)
+SYMFONY HTTP COMPONENT
+SYMFONY STRING
+SYMFONY CLOCK COMPONENT
+SYMFONY TRANSLATION COMPONENT
+	?
+	? возможно ли с помощью +intl-icu указать в plural функции диопазон
+	не получилось установить домен with twig tag trans_default_domain
+	как указать домен по умолчанию для разных файлов/папок шаблонов
+	https://symfony.com/doc/current/reference/formats/message_format.html
+SYMFONY OPTIONS RESOLVER
+	?
+	+ ? Deprecation based on the value is triggered only when the option is provided by the user. Но мне кажется если значение установленно через setDefaut, то невозможно понять пользователь ли передал это значение
+		В таком случае мне кажется при setDefaults всё равно будет выдано замечание об устаревании
+		(Но я не прав, если устаревшее значение установлено по умолчанию, оно не выбрасывает устаревания, таким образом устаревшие значения не должны иметь значений по умолчанию)
+	+ ? Есть способ не отображать сообщение об устаревании в собственном пакете, но как это вызвать
+		(если устаревший параметр нужен для настройки другого параметра используй Options::offsetGet('', false))
+	+ неужели входные данные передаются через Options $options (да, но доступ возможен только к другим nodes)
+	не передавать массив значений в callback только чтобы установить по умолчанию $resolver->setIgnoreUndefined(true);
+	определить разрешённый набор ЗНАЧЕНИЙ choices => [ anyKey => stringValue, anyKey2 => stringValue2 ] Как прототип НО с ключевыми значениями
+SYMFONY CONFIG COMPONENT (Cache, TreeBuilder)
+	?
+	+ ? почему не применяется useAttributeAsKey (потому что применяется только к arrayPrototype)
+	+ ? TreeBuilder: как определить plain array (индексный) (->scalarPrototype())
+	+ ? как пользоваться ->beforeNormalization()->castToArray()->end() (c ->scalarPrototype())
+	+ ? зачем для TreeBuilder(name: 'ЗАЧЕМ ИМЯ') иметь имя (это Processor не учитывает ключ rootNode)
+TREE BUILDER
+SYMFONY BUNDLES
+	?
+	? не могу представить в каком случае может понадобиться настраивать пакет в зависимости от другого пакета "Simplify Configuration Of Multiple Bundles"
+	? как пользоваться AbstractBundle::extension
+	+ попробовать variableNode в Configurator (может быть чем угодно)
+	? Как пользоваться Bundle::
+		+ prependExtension
+		+ ContainerConfigurator::extension(,,prepend)
+			зависимая конфигурация bundles друг от друга
+		
+		build
+		
+		registerCommands
+		
+		boot
+		shutdown
+		
+		setContainer
+		
+		+ getContainerExtension::getAlias (имя root элемента конфига)
+	Configuration addDefaultChildrenIfNoneSet
+***
+TWIG
+	https://symfony.com/doc/current/reference/twig_reference.html#is-granted
+	?
+	? зачем следующие аргументы для fragment_uri
+		strict
+	? asset_version не возвращает версию
+	fragment_uri(sign=false) всегда ли access denied или это можно настраивать (в конфиге нет ничего)
+SYMFONY EXTENTIONS
+SYMFONY SECURITY
+	?
+	+ ? Я ошибочно использовал group provider, передавая его в опцию form.validation_groups,
+		но туда передаются либо: string, array, GroupSequence или callback
+		А сам group provider, назначается классу через атрибут.
+		другое дело как назначить провайдера не через атрибут GroupSequenceProvider, а через config/validator
+		я подозреваю, что сделать это можно через установку тега напрямую
+		(
+			Нет, это не так.
+			Сущность не сервис, у сущности может быть GroupSequenceProvider за счёт аттрибута
+			Но этот атрибут не у сервиса, а у любого простого класса
+			Сам сервис валидатора просто читает аттрибут у класса за счёт рефлексии
+		)
+		Таким образом мы вынуждены в настройке framework.validation.enable_attributes
+		устанавливать true
+	+ ? куда пропал сервис CsrfTokenManagerInterface (Он не добавился потому что packages[framework.csrf_protection.enabled = false])
+	+ ? где CsrfTokenManagerInterface (не всегда проводиться)
+	? структура JWT
+	? как создать токен JWT (по каким входным данным)
+	????аутентификация на основе токена JWT
+	?https://symfony.com/doc/current/security/remember_me.html
+		1) workflow REMEMBER_ME
+		2) workflow Token lifecycle
+	по неизвестной причине не вызывается scheb_two_factor.authentication.require при требовании 2FA хотя scheb_two_factor.authentication.form отправляется
+	зачем нужны JWT токены
+	реализовать 3 обязательных TwoFactor аутентификатора за раз чтобы просто войти
+	задача: получить из TOTP secret -> CODE для аутентификации с другим алгоритмом и всего 3-мя цифрами
+	найти утилиту которая выдаёт TOTP код по переданному секрету
+	если у firewalls одинаковый контекст значит ли это то что выход из системы у них тоже будет одновременным
+	??Если пользователь имеет Token означает ли это то что он всегда IS_AUTHENTICATED
+	HWI OAuth если указан infos_url получает данные с него, но там есть интересный паттерн /~:(params) непонятно в каких случаях возможно получить ограниченный набор данных
+	HWI OAuth не получилось возвращать из UserResponse свойства из path https://github.com/hwi/HWIOAuthBundle/blob/master/docs/internals/response_object_and_paths.md
+	+ HWI OAuth почему фейлится csrf валидация (csrf ни при чём, HWI UserProvider не создаёт пользователя поэтому и найти не мог)
+	HWI OAuth зачем нужен и как пользоваться refreshToken
+	HWI OAuth сделать авторизацию через Google
+	HWI OAuth сделать авторизацию через Telegram
+	+ Какая разница между User and SecurityToken (SecurityToken отображает вид аутентификации и данные, присущие токену, например роли когда пользователь был авторизован, а не те которые есть у пользователя с БД)
+	+ назначать группы login, register в зависимости от состояния объекта с помощью своего sequence provider UserGroupProvider 
+	(
+		Symfony 7.1 Form Component не учитывает передачу groupSequenceProvider как аргумент validation_groups
+		поэтому приходится делать GroupSequenceProvider callable(__invoke)
+	)
+	???много чего непонятного с OAuth2-client-bundle, как использовать accessToken
+		как передавать expired
+		и вообще как пользоваться accessToken
+	???управлять своей учётной записью github со своего сайта (через api github)
+	???не получилось OIDC https://symfony.com/doc/current/security/access_token.html#using-openid-connect-oidc
+	чекнуть API TwoFactorToken
+	???не получилось CAS 2.0 https://symfony.com/doc/current/security/access_token.html#using-cas-2-0
+	+ авторизируется ли пользователь несколькими authenticators за раз (да, но это беcсмысленно, так как в session сохраняется _security_<FIREWALL_NAME>
+	+ деавторизировать пользователя если у него изменилось (customPoly)
+		возможно ли через свой app_user_provider (Doctrine decorator) Symfony\Component\Security\Core\User\UserProviderInterface
+		(
+		ДА, пользователь выходит из авторизации если в своём UserProvider бросить исключение UserNotFoundException
+		НО проще это сделать через User implements EquatableInterface
+		)
+	+ ?почему при смене роли даже если пользователи session & db считаются равными(EquatableInterface) с базы данных не устанавливаются роли в сессию
+		(
+			дело в том что Token содержит роли, присвоенные при аутентификации, security::isGranted использует их
+			а у user да, они могут измениться
+		)
+	как буд-то form_login.use_forward не использует forward, а всё равно перенаправляет
+	На чистом шаблоне попробуй: что конкретно делает конфигурация form_login.remember_me
+		Просто как будт-то бы ни на что не влияет
+	как сделать немедленный выход из системы если определённые поля объекта изменены
+		может быть изменить user.rememberMeUpdatedAt
+		(в EventListener как-то понять что RememberMeToken не валидный и)
+		throw new AccountStatusException (чтобы удалить _session_FIREWALL, то есть деавторизовать user)
+		очень грубый рабочий вариант:
+			$token->getUser()->getPassport()->invalidateRememberMeCookie(); (подконтрольная сигнатура)
+			$this->container->get('em')->flush();
+			в Voter throw new CustomUserMessageAccountStatusException();
+	+ как буд-то при некоторых исключениях сбрасывается IS_AUTHENTICATED_FULLY (если в Voter бросить AccountStatusException token fully authenticated инвалидируется)
+	если ограничить REMEMBERME на определённый путь, всё равно из REMEMBERME данные перетекают в PHPSESSID
+		как это работает
+	реализовать LoginForm for User and VipUser[что-то больше чем просто роли] (как будет удобнее и разумнее), VipUser entity, VipUserPassport entity, VipUserChecker tagged with security.user_checker.main
+		?раз у нас разные поставщики пользователей
+		значит реализовать аутентификаторы в разных firewalls (чтобы выход из одного firewall не заставлял выходить из другого logout.invalidate_session=false)
+		?для того чтобы иметь другой (VipUserToken) для User сделай form_login, а для Vip сделай собственный аутентификатор, который вернёт новый тип VipUserToken с доп. фичами (информаций, которая не храниться в БД обычных пользователей)
+		ради эксперемента установить firewall_1.context=<same> firewall_2.context=<same> и statelss=false
+		при аутентификации через один firewall попробовать добиться аутентификации через другой firewall
+	??проанализировать процесс записи TokenInterface service в течении аутентификации (как оно работает изнутри)
+	возможно сервис TokenInterface является synthetic так как по одному и тому же SERVICE_ID я получаю разные сервисы
+	выдача себя за другого пользователя через заголовок не работает https://symfony.com/doc/current/security/impersonating_user.html#events
+	?как из auto hasher мигрировать пароль в custom no_hash
+	не получается мигрировать password hashers в md2 или другие, но если стоит auto всё мигрируется в новейший password hasher
+	+ похоже собственный password hasher можно использовать только со своим authenticator (НЕТ, просто сущность должна сама возвращать имя passowrd hasher)
+	?не могу авторизоваться после смены password hasher но добавив migrate_from	
+	+ как буд-то бы не работает перехватчик json_login для check_path (потому что помимо check_path проверялся заголовок ContentType, который должен был быть application/json)
+	как запустить другой аутентификатор при неудаче предыдущего
+	??залогиниться через X.509 Client Certificates не получилось https://symfony.com/doc/current/reference/configuration/security.html#x-509-authentication
+	?используя программный выход $security->logout() проверяется csrf, но... это же не форма и не POST, зачем csrf???
+***
+SYMFONY TESTS
+	https://symfony.com/doc/current/components/phpunit_bridge.html
+	??? Как работать с тестами бандла
+	?
+	+ ? Как получить env в тесте без $_ENV
+		(
+			с помощью сервиса 'container.getenv'
+			
+			php bin/console debug:container | grep -i env
+			self::getContainer()->get('<FOUND_SERVICE>')...
+		)
+	???: Похоже тут уже ничего не сделать, PANTHER_APP_ENV тупо не переопределяет APP_ENV
+		в экземпляре браузера
+	? notifier: По неизвестной причине тест не видит что в очередь был добавлен ASYNC message
+		причём используя ChatterInterface тест async возможен, и он видит отправленные async сообщения
+		в то время используя NotifierInterface тест не видит что было отправлено сообщение
+	? Как тестировать session::flashes
+	+ ? Почему при отправке message на sync, async транспорты тест не видит что они были отправлены
+		Хотя ФАКТИЧЕСКИ они действительно отправляются
+		(
+			Транспорт 'in-memory://' портит тесты
+			
+			К сожалению правило следующее:
+			Чтобы тесты работали нужно менять DSN настройку каждого поставщика на 'null://null'
+			А не менять транспорты компонента messenger: sync, async...
+		)
+	+ ? Определяя client как свойство объекта в #[PHPUnitAttr\Before]
+		почему-то тест не видел что на bus были отправлены email, notifications...
+		Failed asserting that the Transport has queued "1" emails (0 queued).
+		(
+			Это связанно с внутренним вызовом static::ensureKernelShutdown();
+			И работа с ядром (kernel, client...) полностью завершается
+			Так что клиента определять (в #[PHPUnitAttr\Before]) беcсмысленно, ведь ядро окончит работу
+			
+			Предпочитай setUp вместо #[PHPUnitAttr\Before], так как kernel не падает
+		)
+		
+	? когда нужно использовать KernelBrowser а когда HttpBrowser для запросов
+		я так пологаю когда нужен (Container, Profiler, Kernel...) KernelBrowser
+		в упрощённом варианте просто HttpBrowser
+	? абсолютно не понятно зачем нужен panther interactive mode
+		https://symfony.com/doc/current/testing/end_to_end.html#interactive-mode
+	+ ? почему вызывается какое-то предупреждение у клиента пантеры (потому что выполнять тесты нужно раздельно)
+	??? при тестировании комманды с помощью CommandTester не передаются встроенные опции -q, --env...
+	объект передается по ссылке в метод, в методе он перезаписывается на новый объект, как вернуть исходный объект, ведь он был перезаписан по ссылке
+	+ ?? По каким-то причинам в тесте при вызове form::createView symfony ругается что нет сессии (setUp в requestStack добавь request с session)
+	+ ?? По каким-то причинам в тесте form::isValid false (нет csrf)
+	?PHPUnit: не получилось использовать XDebug driver для code coverage
+	+ неужели единственным способом задать локаль запроса является передача через url (конечно нет, для удобства в тестах можно передавать HTTP_<LOCALE> request->server параметр, который установиться в request->headers как <locale>)
+	+ странность, я не могу получить из контейнера env переменные, определённые в .env.test
+		определи ссылки на них в services.yaml when@test parameters
+	+ значение из .env.test не устанавливается в контейнер:
+		в .env.test:  PANTHER_CHROME_ARGUMENTS='--ignore-certificate-errors' не попадает в контейнер(ParameterBagInterface) при bootKernel
+		а значение по умолчанию в services.yaml parameters устанавливается
+		(
+			всё правильно, тесты ни при чём,
+			просто env переменные не храняться в ParameterBagInterface
+			достать env переменную можно через @container.getenv
+		)
+	+ просто не читаются переменные env
+		допустим panther не может элементарно увидеть установленную директорию для скриншотов
+		PANTHER_ERROR_SCREENSHOT_DIR я установил везде .env, .env.test, services.yaml when@test parameters env()
+		(
+			читается .env, .env.test
+			но по умолчанию services.yaml parameters не видит, зато в контейнер попадает именно она
+		)
+	выбрать несуществующий choice у формы
+		https://symfony.com/doc/current/components/dom_crawler.html#components-dom-crawler-invalid
+	+ E2E не увидел разницы https://symfony.com/doc/current/testing/end_to_end.html#configuring-panther-through-environment-variables
+		PANTHER_NO_HEADLESS (если 1 открывает браузер и делает что в тесте)
+	+ E2E не увидел разницы https://symfony.com/doc/current/testing/end_to_end.html#configuring-panther-through-environment-variables
+		PANTHER_WEB_SERVER_ROUTER (относительный путь к своему файлу bootstrap.php)
+	E2E не увидел разницы https://symfony.com/doc/current/testing/end_to_end.html#configuring-panther-through-environment-variables
+		PANTHER_ERROR_SCREENSHOT_ATTACH
+	Не понятно зачем https://symfony.com/doc/current/testing/end_to_end.html#chrome-specific-environment-variables
+		PANTHER_NO_SANDBOX
+	Не понятно как с флагом --debug & PANTHER_NO_HEADLESS="1" дебажить ошибки в браузере
+		никуда ничего вроде как не выводится
+	E2E зачем Client::createSeleniumClient
+	при вызове static::createClient говорит что я его уже вызывал (создавать клиента можно 1 раз) но я этого не делал
+		Booting the kernel before calling "Symfony\Bundle\FrameworkBundle\Test\WebTestCase::createClient()" is not supported, the kernel should only be booted once.
+	E2E после waitForVisibility
+		нет title $crawler->filter('head title')->attr('_text') хотя естественно он есть
+	при создании клиента или в более глобальном месте как указать _порт 8000_ и _https true|false_
+	+ E2E Panther создаёт картинку в kernel.project_dir, я как-то неправильно описал PANTHER_ERROR_SCREENSHOT_DIR (PANTHER_ERROR_SCREENSHOT_DIR это только для картинок при ошибках описывать нужно в .env, .env.test)
+	+ E2E как отключить проверку SSL сертификата
+		SSL certificate problem: self-signed certificate in certificate chain for "https://127.0.0.1/".
+		(через env параметр самого PANTHER, которые передадуться в аргументы браузера)
+	E2E createPantherClient как указать порт, так как не обращается на порт 8000, а обращается на 443
+	E2E не получается использовать PHPUnit assertions
+		E2E не получается сделать assertResponseStatusCodeSame (стандартные назначения требуют вызова static::createClient)
+		жалуется на то, что не был вызван request() method
+			The "request()" method must be called before "Symfony\Component\BrowserKit\AbstractBrowser::getResponse()".
+	E2E что-то не так с методом создания клиента
+	+ как пользоваться Crawler::reduce (возвращай false на коллекцию Crawler если элемент не нужен)
+	что происходить при перегрузке namespace Crawler::setDefaultNamespacePrefix
+	как пользоваться Crawler::registerNamespace
+	как работать с XPath Crawler::evaluate
+		Crawler::filterXPath
+	+ что конкретно выводит Crawler::siblings (элементы того же уровня не включая выбранный)
+		+ что конкретно выводит Crawler::nextAll (следующие элементы того же уровня вложенности)
+	+ где можно в тестах исполнить команду на отчистку дазы данных (в tests/bootstrap)
+	+ возможно ли установить $_SERVER переменные запуская tests/bootstrap (Да, через файл phpunit.xml.dist)
+	как разрешить $client->enableProfiler(); если произошли редиректы
+	как пользоваться assertThatForClient
+	почему assertResponseHasCookie('PHPSESSID') ответ не имеет куки при логине пользователя
+	PHPUnit: почему-то нет метода (может быть из-за версии):
+		assertArrayIsIdenticalToArrayOnlyConsideringListOfKeys
+		assertArrayIsIdenticalToArrayIgnoringListOfKeys
+		assertIsList
+		assertStringEqualsStringIgnoringLineEndings
+	+ используя объект DomCrawler\Form как установить метод отправки (crawler->selectButton->form(method: ''))
+	где автоматически создаётся dbName_test
+	не понятно зачем client->catchExceptions
+	есть ли какая-то существенная разница между get(Request|Response) & getInternal(Request|Response)
+	+ где указать протокол (https) чтобы client->xmlHttpRequest обращался по нему (createClient(server: HTTPS true))
+	что делает $client->reload()
+	что делает $client->reset()
+	какая разница между reset and reboot the kernel(ядра)
+	что за тэг kernel.reset
+	попытался достать из контейнера в тесте 'test.client' но это всё же отличается от createClient
+	+ какая-то ерунда, просто не могу сделать прослойку чтобы отнаследовать KernelTestCase и переопределить метод createKernel... (App\Tests namespace для тестов а не как ты написал Tests)
+	+ mockService->...->willReturn('СТРОКА НЕ ПРОВЕРЯЕТСЯ') (потому что ты говоришь что по факту вернётся)
+	?а зачем нам тогда такой странный mockService если он возвращает что я написал в тесте, и не проверяет реальной функциональности
+Composer Scripts
+	?
+	+ ? Как в скриптах запустить Symfony Console Command
+		используя класс консольной команды (получится без зависимостей конструктора)
+SYMFONY BROWSER KIT
+	?
+	? непонятно что за ciphers, auth_basic and query имеются в виду
+		и как их передавать HttpBrowser
+		You can also use HTTP client options like ciphers, auth_basic and query. They have to be passed as the default options argument to the client which is used by the HTTP browser.
+	? протестировать что cookie "app_theme" установилась
+	?? SSL certificate problem
+		Передача клиентам ["verify_peer"=>false,"verify_host"=>false] не помогает
+	+ ? Как это на серверной стороне можно делать Client::xmlHttpRequest ?!
+		или это просто для заголовков (Да, автоматисески будет добавлен HTTP_X_REQUESTED_WITH)
+SYMFONY MAILER
+	?
+	? Зачем email::replyTo('fabien@symfony.com')
+    ? Зачем email::priority(Email::PRIORITY_HIGH)
+	? реализовать 2fa.email_code со сроком истечения
+	throttle_limit это период, в течении которого нельзя запрашивать изменение пароля, как понять что можно сгенерировать новую ссылку
+		https://github.com/SymfonyCasts/reset-password-bundle/blob/main/docs/manual-setup.md
+	? как в MessageEventListener указать окончательный список получателей, может быть исключить global mailer.envelope.recipients
+	? вместо изменения глобального конфига в .yaml, позволь клиентам изменять их определив в базе данных глобальные настройки EmailHeaders и примени их к $event->getMessage() в MessageEventListener
+	? mailer::stop не отсоеденилась от smtp сервера
+	даже если написал в messenger.yaml 'Symfony\Component\Mailer\Messenger\SendEmailMessage': async
+		письмо отправляется синхронно
+	? зачем &peer_fingerprint= в dsn
+	??? ЗАЧЕМ и КАК ПОЛЬЗОВАТЬСЯ подписыванием и шифрованием писем https://symfony.com/doc/current/mailer.html#signing-and-encrypting-messages
+	? при подписании email with SMimeSigner пропадает html содержимое письма
+	+ ? говорят метод send у транспорта возвращает информацию о сообщении и доп. дебаг инф., но как получить этот транспорт (замени service EmailInterface на TransportInterface)
+	? что за метод cc
+	? что за метод bcc
+	+ ? При какой ситуации css, js с одного entry могут остатся и смешаться с css, js из другой entry?
+		Просто когда такой момент настанет есть EntrypointLookupInterface::reset()
+		(
+			Вопрос неверный
+			
+			ФИЛОСОФИЯ WebpackEncoreBundle:
+				Есть сервис (EntrypointLookupInterface), который отдаёт пути к собранным css, js
+				Twig рендерит шаблон, а в шаблоне функции от WebpackEncoreBundle,
+				которые используют EntrypointLookupInterface для выдачи файлов css, js
+				НО когда этот сервис выдаёт путь, он его из своего состояния удаляет
+				
+				Таким образом: после первой отрисовки шаблона
+				то есть когда будут вызваны функции 'encore_entry_link_tags', 'encore_entry_script_tags'
+				ПУТЕЙ css, js В СЕРВИСЕ НЕ БУДЕТ
+				
+				Для того чтобы они появились (как есть изначально в соответствии с entrypoints.json)
+				нужет EntrypointLookupInterface::reset()
+		)
+	+ ?Отправляя письма получаю ошибку 550 relay not permitted (не было авторизации!, .env файл конечно же не читает secrests так как это просто статичный файл)
+	+ Каким таким образом без авторизации я могу отправлять письма на почту админа (если почтовый ящик принадлежит почтовому домену, который ты и использовал для отправки писем, авторизация не нужна, так как ретрансляции не происходит)
+	неужели тест может понять что в MessageHandler будет отпарвляться письмо, или это внутренняя реализация асинхронной отправки письма, то есть если в БД записан объект именно Email
+Composer get extra in event listeners (scripts & plugins)
+allow-plugins of bundle
+QR Code Bundle https://github.com/endroid/qr-code-bundle?tab=readme-ov-file#configuration
+	?
+	+ ? возможно ли получить оригинальное содержимое qr_code картинки, ведь result::getDataUri выдаёт base64 data uri готовое к примению в html img.src
+		(
+			result::getString причём для png это бинарное представление, а для svg это xml документ
+			result::getDataUri использует base64_encode(result::getString)
+		)
+SYMFONY RATE LIMITER
+	?
+	???When Limit::wait() абсолютно все запросы (и новые в том числе) будут блокированы пока Limit::wait() не закончиться до конца
+	R!: Осознать философию использования ReteLimiter, в том смысле что когда использовать ::consume(), ::reserve()
+	ИНТЕРЕСНЫЙ МОМЕНТ: для security.firewall.login_throttling.limiter как и принято указывается полный SERVICE ID rate_limiter
+		а для framework.messenger.transports.<>.rate_limiter.только имя самой Factoroy
+	???R: настроить rate_limiter для транспорта messenger / rate_limiter blocks the whole worker (for rate limited transport you need to create a separate worker)
+		сделал, но только не совсем понятно почему при обновлении workers не обрабатываются сообщения, сохранённые раньше
+SYMFONY LOCK
+***
+	Lock factory для Schedule
+	R: создать и определить свой rate_limiter.lock_factory
+	заставь блокировку сброситься с помошью след. методов:
+		release() OK
+		ttl CAN'T
+		__destruct CAN'T
+	?
+	Что за исключение и как его исправить
+		symfony Failed to release the lock (при тестировании telegram chatter)
+	Блокировка не слетает после истечения ttl (1 сек.), а должна по идее
+		$lock = $lockFactory->createLock($key = new Key('TEST'), ttl: 1);
+		$isLocked = $lock->acquire();
+		for($i = 0; $i < 500_000_000; $i++) {
+			$a = $i + $i;
+		}
+		// or sleep(2);
+		
+		$lock2 = $lockFactory->createLock($key);
+		$isLocked2 = $lock2->acquire();
+		\dump($isLocked2); // false
+	?Блокировка обновит ttl с помощью refresh только в случае если она уже не слетела, мне кажется это логично
+	Блокировка слетает, а по идее не должна
+		Имею доступ к ресурсу когда по идее на него сохранилась блокировка
+		НО Я ЖЕ НЕ ДОЛЖЕН ЕГО ИМЕТЬ, по идее блокировка ведь слететь не должна была когда сработал __destruct
+		$lock = $lockFactory->createLock($key = new Key('TEST'), autoRelease: false/* оставляем блокировку даже после __destruct */);
+		$isLocked = $lock->acquire();
+		unset($lock); // Symfony\Component\Lock\Lock::__destruct
+		
+		$lock2 = $lockFactory->createLock($key);
+		$isLocked2 = $lock2->acquire();
+		\dump($isLocked2); // true
+	Почему подвисло навсегда
+		$store = new FlockStore($cacheDir.'/__LOCK__');
+		$lockFactory = new LockFactory($store);
+		
+		$lock = $lockFactory->createLock($key = new Key('TEST'), ttl: 10);
+		$isLocked = $lock->acquire();
+		
+		$lock2 = $lockFactory->createLock($key);
+		$isLocked2 = $lock2->acquire(true);
+		\dump($isLocked2);
+	Не происходит вечного зависания хотя я его ожидал
+		$lock1 = $lockFactory->createLock($key = new Key('TEST'));
+		$lock1->acquire();
+		$lock2 = $lockFactory->createLock($key);
+		$isLocked2 = $lock2->acquire(true);
+	Не представляю сценарий, в котором для одного и того же ресурса с одним и тем же lockId, понадобиться создавать 2 экземпляра lock
+	+ При вызове acquire() если уже есть блокировка, сценарий не возвращет false как описано в docs, а ждёт пока получит блокировку
+		ты перепутал... это поведение связано с выполнением php \sleep() от rate limiter
+	Немного не понятный момент https://symfony.com/doc/current/components/lock.html#expiring-stores
+	All concurrent processes must use the same physical file system by running on the same machine and using the same absolute path to the lock directory.
+		Using a FlockStore in an HTTP context is incompatible with multiple front servers, unless to ensure that the same resource will always be locked on the same machine or to use a well configured shared file system.
+SYMFONY CACHE
+	?
+	+ Чем отличаются команды
+		cache:pool:*        (cache:pool:clear, cache:pool:prune, cache:pool:delete)
+		от
+	 	cache:*             (cache:clear)
+			cache:* ЭТОЙ КОМАНДОЙ ПОЛЬЗУЕТСЯ cache.system_clearer И ОЧИЩАЕТСЯ СИСТЕМНЫЙ POOL
+	+ Почему кэш удаляется сразу же (каждый раз __CALCULATED__) (потому что в реализации PSR-6 нужно вызвать save())
+		$cache = new FilesystemAdapter(
+			'__FilesystemAdapter__',
+			20,
+			$cacheDir,
+		);
+		$item = $cache->getItem('value1');
+		if (!$item->isHit()) {
+			\dump('__CALCULATED__');
+			$item->set(\random_int(0, 100));
+		}
+		\dump($item->get('value1'));
+	Не получается пользоваться cache tag, данные кэша немедленно удаляются при попытке назначить тег
+		$cache = new FilesystemTagAwareAdapter(
+			'__FilesystemAdapter__',
+			100,
+			$cacheDir,
+		);
+		
+		$init = static function(ItemInterface $item) {
+			$item->tag('tag_crucial');
+			\dump(
+				'__CALCULATED__',
+			);
+			
+			return 'VALUE_'.\random_int(0, 100);
+		};
+		$getCached = static fn($key) => $cache->get($key, $init);
+		
+		\dump($getCached('key1'));
+		\dump($getCached('key1')); // __CALCULATED__ again!
+		/* Инвалидировать нечего, так как кэш тупо не сохраняется
+		$cache->invalidateTags([
+			'tag_crucial',
+		]);
+		*/
+		
+		Хотя сервис TagAwareCacheInterface $tagAwareCache работает с tag отлично, значит проблема в создании экземпляра адаптера
+	Не получилось заставить кеш вычисляться заново асинхронно 
+		записей в БД не появляется
+		$cache->get('secret2', [Service\CacheGetter::class, 'refresh'], \INF)
+		https://symfony.com/doc/current/cache.html#computing-cache-values-asynchronously
+	Когда получиться засунуть app.cache_adapter.php_files в pools установи для app.cache_adapter.php_files tag cache.pool с аттрибутом namespace: чтоб создавалась дополнительная папка
+	Не получается установить новый service id для framework.cache.app: 'app.cache_adapter.php_files'
+	? В чём проблема не могу понять
+		(Service "app.cache.minute": The argument "0" doesn't exist in class "Symfony\Component\Cache\Adapter\PhpFilesAdapter".) 
+		Подозреваю, что это связано с разным кол-вом аргуметов адаптеров, и аргумент под 0 индексом просто не учитывается (но очень сомневаюсь, что это так)
+		framework:
+			cache:
+				pools:
+					app.cache.minute:
+							adapter: 'Symfony\Component\Cache\Adapter\PhpFilesAdapter'
+							default_lifetime: 60
+		(
+			ошибка возникает при установке аттрибута namespace используя tag 'cache.pool' с PhpFilesAdapter
+		)
+	cache.pool сочетает в себе adapter & provider, но фактически какая их ответственность, кто за что отвечает
+	Не могу использовать свой adapter как часть своего же pool
+		tag_pool:
+			# can't use my adapter
+			adapter: 'app.cache_adapter.filesystem_tag_aware'
+SYMFONY The Mime Component
+	создай реализацию MimeTypeGuesserInterface для своего угадывающего тип по содержимому
+SYMFONY NOTIFIER
+###
+Email      [OK]
+Telegram   ~
+Twilio     x
+OneSignal  x
+###
+	***
+	(Аккаунт должен быть разрешён)	https://www.twilio.com/login?g=%2Fconsole-zen%2Fhttps%3A%2F%2Fconsole.twilio.com%2Fdashboard&t=ad3c73fe63c122a65d222f37889edc531c449dd2bb55f20c74e6f8a6afbb057b
+	
+	R: отправить sms на телефон
+		//###>
+		$subject = 'Symfony Notifier';
+		$content = <<<'__TEXT__'
+Sms I hope I'll be able to send
+__TEXT__;
+		
+		$notification = new Notification(
+			subject: $subject,
+			channels: [
+				'sms/twilio',
+				/*
+				'push/onesignal',
+				'chat/telegram',
+				'chat',
+				'push/novu',
+				'browser', // ? how to test it
+				'email',
+				*/
+			],
+		);
+		$notification
+			->content($content)
+			->importance(Notification::IMPORTANCE_LOW)
+			->emoji('💕')
+		;
+		
+		$recipient = new Recipient(
+			email: $adminEmail,
+			phone: $adminPhone,
+		);
+		//$recipient = new NoRecipient();
+		
+		/*
+		$notifier->send(
+			$notification,
+			$recipient,
+		);
+		*/
+		
+		//###>
+		$options = (new TwilioOptions())
+			->webhookUrl('app_sms_twilio_webhook')
+		;
+		
+		$sms = new SmsMessage(
+			phone: '+79996403928',
+			subject: 'Могу отправлять смс за счёт api сервиса!',
+			
+			from: 'ХАКЕР-МОШЕННИК',
+			options: $options,
+		);
+		
+		$sentMessage = $texter->send($sms);
+	RRR: захватить twilio webhook https://symfony.com/doc/current/webhook.html#usage-in-combination-with-the-notifier-component
+	?
+	? Попробуй через Notifier отправить обновление turbo-stream
+		https://github.com/symfony/symfony/blob/7.1/src/Symfony/Component/Notifier/Bridge/Mercure/README.md
+	?RRRR: OneSignal //TODO: Firebase Выкинул исключение
+	?RRRR: отправить push на телефон (OneSignal)
+		Похоже ID это device token, которых нужно получить (через JS) от Firebase
+	???? PUSH FCM v1: ПОЧЕМУ НИКАК НЕ ПОЛУЧАЕТЬСЯ ОТПРАВИТЬ push на телефон with push/onesignal
+		OneSignal имеет конфигурацию, данную от Google Firebase FCM v1
+	? PUSH FCM v1: OneSignal имеет конфигурацию, данную от Google Firebase FCM v1
+		но по какой-то неизвестной причине отправка push невозможна из-за ошибки в FCM v1
+		fcm v1 doesn't send push notifications
+	? OneSignal Push: могу ли я задать один и тот-же externalId для разных подписчиков
+		чтобы отправлять что-либо одновременно семейству подписчиков по externalId
+	? OneSignal Push: Как импортировать уже существующих у меня в базе данных подписчиков
+		в OneSignal, то есть в каком виде csv это сделать
+	? OneSignal Push: Что такое теги и как ими пользоваться
+	? OneSignal Push: Как собрать пользователей в сегмент по фильтру (и главно как этим пользоваться)
+	? OneSignal Push: Создавать условия отправления последующих push с сайта OneSignal
+	??? OneSignal Push: Подписчик есть, а push не доставляются, но ПОЧЕМУ непонятно (постоянно Failed)
+	? Возможно ли как-нибудь указать options, используя NotifierInterface, а не ChatterInterface
+	+ ? Из-за чего вдруг появилось исключение
+		Invalid "telegram://default" notifier DSN: Missing token
+		Это странно, но перезагрузка ПК помогла
+	+ ?? По какой причине в слушателе mailer/EventListener/MessageListener.php
+		успешно назначаются header sender для TemplatedEmail
+		и не получается назначить header sender для NotificationEmail
+		(
+			По такой, что header from уже назначен для NotificationEmail
+			В то время как для TemplatedEmail из-за его отсутствия он назначается
+			
+			Дело в том, что компонент Notifier для EmailChannel
+			заранее устанавливает header from, используя настройку "mailer.envelope.sender"
+			
+			Таким образом чтобы иметь желаемый адрес ADRESS_NAME <ADRESS>
+			опиши его в этих двух местах одинаково!
+				"mailer.envelope.sender"
+				"mailer.headers.From"
+		)
+	+ ? NotificationEmail: Кто переопределяется header from, email.subject
+		NotificationEmail
+	+ ? NotificationEmail: как работает метод NotificationEmail::markdown 
+	(
+		Этот метод помимо установки контента устанавливает переменную шаблона vars в markdown
+	
+		Начнём с того, что по замыслу у NotificationEmail всегда есть тема, она default по умолчанию
+		Определив алиас email в project_dir/config/packages/twig.yaml можно указать на свои шаблоны @email/<>/notification/...
+		так и происходит в TwigBridge
+		markdown это просто переменная шаблона, используемая как предикат для использования |markdown_to_html фильтра в шаблоне
+		Если в теме(шаблоне) нет предиката, то по факту в шаблон (как и ::htmlTemplate) передаётся просто переменная var markdown
+	)
+	+ ? NotificationEmail: Почему переменная content шаблона(темы) пустая
+	(
+		Ты установил content в Notifier, но не в NotificationEmail, который определён в asEmailMessage, а ведь отправляется фактически то, что определено в этом методе
+	)
+	+ ? NotificationEmail: у меня есть подозрение, что NotificationEmail::theme метод не для тем форм..., а просто тема для сообщения, где определена разметка и используются глобальные переменные шаблона
+		(
+			Да, это так, там указывается разметка сообщения
+		)
+	+ изменить шаблон email notification на свой (по hard-code сразу в SubjectPlusContentNotification реализуя EmailNotificationInterface)
+		Реализуя EmailNotificationInterface ты имеешь доступ к контенту, но не к шаблону :(
+	??? Как для Symfony Email Notification указать путь к htmlTwigTemplate
+		1) Попробовать попереопределять шаблоны в своём проекте
+			.\vendor\symfony\twig-bridge\Resources\views
+			.\templates\bundles\TwigBridge
+		2) Как крайний вариант послушать событие MessageEvent и если это Notification поработать с событием, может есть метод полезный
+	?? I can test sending only "sync" but not "async" messages using NotifierInterface service
+		https://stackoverflow.com/questions/78966921/symfony-7-2-notifier-component-testing-i-can-test-sending-only-sync-but-not-a
+	Неужели не каждое сообщение может быть прослушано в MessageEvent
+		вот например email, browser не прослушиваются
+		такое чувство, что в Notification Events отправляются только те события, чьи DSN_TRANSPORTS
+		могут быть сконфигурированы в notifier.yaml (browser, email пролетают)
+	? Test Telegram Async: парадокс, но сообщение отправляется асинхронно, но assert не видит отправленный в очередь message
+	? почему отправление через *Interface по умолчанию не происходит асинхронно как это было сказано в документации
+	? Telegram channel: как надёжно получить message_id ботовского message
+	R: Telegram channel: повесить бота на sheduler, чтобы раз в час делал пост
+	? Telegram channel: разобраться до конца как работает ::edit(message_id) просто в официальной док-ии посмотри про метод изменения
+	? Telegram channel: какой-то непонятный inline mod @NameBot PLACEHOLDER
+	? Telegram channel: как распологать кнопки как хочешь
+	? Telegram channel: как убрать экранирование ответа при использовании answerCallbackQuery
+	? Telegram channel: неужели edit можно применить только к тому сообщению бота что было использовано с replyMarkup
+	? Telegram channel: Когда происходит message_reaction
+	? Telegram channel: Когда происходит shipping_query
+	? Telegram channel: Когда происходит pre_checkout_query
+	? Telegram channel: Когда происходит purchased_paid_media
+	? Telegram channel: Когда происходит chat_join_request
+	? Telegram channel: Когда происходит chat_boost
+	? Telegram channel: Когда происходит removed_chat_boost
+	? Telegram channel: Как отправить голосование ботом
+	? Telegram channel: Как ответить на inline_query @NameOfBot [param]
+	? TEST Telegram channel: Бросается исключение
+		Symfony\Component\Lock\Exception\LockReleasingException: Failed to release the "default-http_client" lock
+		При тестировании отправленного сообщения в telegram
+		Неизвестно почему, но при использовании lock.default DOCTRINE_URI lock не отпускается
+		Проблема решилась установкой lock.default в filesystem store
+	+ При тестировании notification сообщения как будто бы не отправляются assert fails
+		Но фактически сообщение может быть отправлено!
+		(
+			очень вероятно, что тест сообщений, отправленных notifier будет считаться
+			только для тех notifications, DSN которых был описан в notifier.yaml
+		)
+	+ не могу при тестировании отправить сообщение по асинхронному транспорту
+		Всё ты можешь, сообщение просто добавлялось в тестовую таблицу test_test вместо real_db
+	+ ? Telegram channel: Не работает markdown, markdown_v2	
+		Это временная проблема на Сентябрь 2024 года, нужно вместо константы использовать 'markdownv2'
+	+ ? Не получается установить webhook для приёма сообщений с телеграма
+		(
+			С помощью ngrok создай https? тунель
+			https://api.telegram.org/bot<TELEGRAM_TOKEN>/setWebhook?url=<NGROK_TUNNEL>/telegram/webhook
+		)
+	+ ? Telegram channel: Не понимаю как указать webhook для бота
+		Через переход по сслыке https://api.telegram.org/bot<TELEGRAM_TOKEN>/setWebhook?url=<>
+	+ ? Telegram channel: Не понимаю для чего TelegramOptions::edit
+		Для изменения сообщения бота
+		Можно сделать динамическое меню
+	+ ? Telegram channel: Не понимаю для чего TelegramOptions::answerCallbackQuery
+		Ответ на inline_callback (inline_button) в виде alert или toast
+	? что за channel_policy
+	Как, используя telegram bot можно писать людям в личку
+	+ Почему не получается подключиться к telegram bot (не нужно делать urlencode для token)
+	+ Возможно ли указать в SmsMessage transport (если их у меня несколько) (Да, *Message::transport(<>))
+	???LOGIN WITH PUSH CODE: сохранить в паспорте сгерерированный totp secret на 3 цифры 120 сек если ещё нет, форма /totp/login/email, код на push уведомление
+	???2FA При успешном первичном входе UsernamePasswordToken отправить пользователю на телефон TOTP 3-х значный код, который будет валиден 300 сек
+SYMFONY SERIALIZER
+	CACHE: чётвёртым аргументом в *Adapter передай marshaller, который использует Symfony Serializer вместо php serialize()
+	Просто ради интереса заставь \igbinary_serialize() работать
+		https://github.com/igbinary/igbinary
+	Позже создай свой encoder and decoder с обработкой некоторого контекстного ключа
+		который должен что-то делать при кодировании и декодировании
+		так же обязательно создай contextBuilder для этой тематики
+	?
+	? Неужели возможна нормализация (получение массива) из сериализованных данных
+		https://github.com/symfony/symfony/blob/7.1/src/Symfony/Component/Serializer/Normalizer/JsonSerializableNormalizer.php
+		для этого же decode существует
+	? NormalizerInterface: не совсем понятна концепция использования ключей object, * в getSupportedTypes
+	? Почему ничего не сериализует (https://symfony.com/doc/current/serializer.html#using-serialization-groups-attributes)
+		$serialized = $serializer->serialize($object, 'json', context: [
+			AbstractNormalizer::GROUPS => [
+				'Default',
+			],
+		]);
+	+ ? почему serializer::serialize сериализует в виде (с кавычками):
+		"{\"createdAt\":\"2024\"}"
+		(
+			Потому что по глупости передал сериализованные данные на сериализацию
+		)
+	? (после полного изучения serializer)
+		Неужели даже для встроенного сервиса serializer
+		для денормализации csv необходим ArrayDenormalizer
+		и синтаксис Тип[]
+	? Не знаю почему обработчик максимальной глубины не работает
+		AbstractObjectNormalizer::MAX_DEPTH_HANDLER ведь он указан
+		И помимо максимальной глубины есть ещё вложенные объекты!
+	+ ? Не работает MaxDepth
+		Потому что нужно разрешить его использовать в контексте
+	+ ? ObjectNormalizer: может принять defaultContext, но каковы условия срабатывания этого контекста
+	+ ? ObjectNormalizerContextBuilder::withSkipNullValues в конкретно каких случаях пропускаются null
+		в направлении serialize, а иначе как же указать в строке специальную php переменную null :)
+	+ ? csv encoder: as_collection
+		а что разве возможно в одном .csv файле описать несколько структур
+		(
+			Да, конечно, просто с новой строки
+		)
+	? csv encoder: для чего csv_escape_char
+		Не могу проверить так как строка, содержащая (delimiter, space), оборачивается в кавычки, что является хорошим поведением я считаю
+	? почему я не захожу в denormalize у NormailzedPrefixedWithNameConverter
+		$classMetadataFactory = new ClassMetadataFactory(
+			new AttributeLoader(),
+		);
+		$nameConverter = new NormailzedPrefixedWithNameConverter('serialized_');
+		$n = [
+			new ObjectNormalizer($classMetadataFactory, $nameConverter),
+		];
+		$e = [
+			new XmlEncoder(),
+			new JsonEncoder(),
+		];
+		$serializer = new Serializer($n, $e);
+		$xmlRgbColor = <<<'__XML__'
+		<rgb>
+			<serialized_red>1</serialized_red>
+			<serialized_green>2</serialized_green>
+			<serialized_blue>3</serialized_blue>
+		</rgb>
+		__XML__;
+		$array = $serializer->decode($xmlRgbColor, 'xml'),
+		$object = $serializer->denormalize($array, RgbColor::class),
+		(
+			Подозреваю, что nave converter нужен для процесса serialize, а не для deserialize
+			только если так, то зачем тогда метод denormalize в NameConverterInterface
+		)
+	? Не получилось указать serialized_name в файле .yaml
+		хотя при использовании AttributeLoader аттрибуты читаются
+		attributes:
+			red:
+				serialized_name: r_e_d
+		
+		$classMetadataFactory = new ClassMetadataFactory(
+			new YamlFileLoader($projectDir.'/config/serializer/RgbColor.yaml')
+		);
+		$nameConverter = new MetadataAwareNameConverter($classMetadataFactory);
+		$n = [
+			$objectNormalizer = new ObjectNormalizer(
+				$classMetadataFactory,
+				$nameConverter,
+			),
+		];
+		$e = [
+			'xml' => new XmlEncoder(),
+			'json' => new JsonEncoder(),
+		];
+		
+		$serializer = new Serializer($n, $e);
+	? Выбрасывается исключение, а не должно за счёт BackedEnumNormalizer::ALLOW_INVALID_VALUES
+		(new BackedEnumNormalizer())->normalize('not_enum_object', context: [
+			BackedEnumNormalizer::ALLOW_INVALID_VALUES => true,
+		]),
+	зачем сериализовывать объекты в сессии (? может быть дело в хранимом объёме, или что ещё...)
+SYMFONY ASSET
+JS
+	this
+	export
+	import
+	constant
+	static constant
+	dynamic function default value is possible
+	?
+	? На сколько я понимаю Symbol в JavaScript предназначен для КЛЮЧЕЙ объектов
+		чтобы объект сохранял свои внутренние настроки, а клиент их мог менять
+		перед исполнением методов
+	Что такое species
+		https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Classes#species
+SYMFONY WEBLINK (PRELOADING)
+	Позже
+		https://github.com/WICG/priority-hints/blob/main/EXPLAINER.md
+	?
+	Не понятно как использовать функции twig от WebLink
+		https://symfony.com/doc/5.x/web_link.html#resource-hints
+HOTWIRE: STIMULUS / STIMULUS USE / STIMULUS COMPONENTS
+	RRRR: (на повторном) Разобраться как работать с Glow
+		https://www.stimulus-components.com/docs/stimulus-glow
+	RRRR: (на повторном) Сделай то же самое
+		https://www.youtube.com/watch?v=DiMj7tRUIBE&list=PLes5YJFlROjF1Lf2RZykNeD-q6KuUYXmn&index=1&ab_channel=EcemGokdogan
+	RRRR: (на повторном) Начиная с этого закончить
+		https://www.stimulus-components.com/docs/stimulus-notification
+	?
+	?+ how to get env with webpack encore in process.env
+		with dotenv-webpack
+	? Абсолютно не понял прикола auto-submit_controller stimulus component
+		https://www.stimulus-components.com/docs/stimulus-auto-submit
+	? StimulusUse useTransition: Нужно разобраться как именно используется ...-from в анимации
+		в некоторых случаях анимация тупо не работает
+		просто такое чувство, что ...-from класс вообще не назначается
+		при совпадении некоторых обстоятельств
+		СЛЕДУЮЩЕЕ НЕ РАБОТАЕТ this.enter():
+		.fade-enter-active {
+			transition: opacity 1s ease-out;
+		}
+		.fade-enter-from {
+			opacity: 0;
+		}
+		.fade-enter-to {
+			opacity: 1;
+		}
+	? StimulusUse useIntersection: не понятны helpers this.allVisible...
+		какие это элементы они отслеживают чтобы считать `все` видимыми?!
+	? StimulusUse useMutation: Непонятный моментик с наличием нескольких изменений
+		после изменения аттрибута или дочернего элемента
+	? StimulusUse useHotkeys: не работает simple нотация
+		useHotkeys(this, {
+		  '/': [this.defaultHandler],
+		})
+	? StimulusUse useHotkeys: Непонятно зачем нужен scope
+	? Вторым аргументом при app.start можно указать schema
+		хочу понять как с stimulus bridge определить новый параметр для нажатой кнопки
+		https://stimulus.hotwired.dev/reference/actions#keyboardevent-filter
+		mail: "@"
+	? Смогу ли получить с помощью target вложенный контроллер
+	+ ? Смогу ли получить с помощью outlet вложенный контроллер
+		(
+			outlet был создан чтобы достать контроллер по selector из любого места на странице
+		)
+	? Хоть так и не советуют делать, но есть возможность получить объект другого контроллера
+		и у меня никак не получилось его заполучить
+		
+		https://stimulus.hotwired.dev/reference/controllers#directly-invoking-other-controllers
+		
+		### HTML ###
+		<div
+			{{ stimulus_controller('first') }}
+		>
+			<div
+				{{ stimulus_target('first', 'another') }}
+				{{ stimulus_controller('second') }}
+			class="">
+			</div>
+		</div>
+		
+		### FIRST CONTROLLER ###
+		static targets = [
+			'another',
+		]
+		
+		connect() {
+			const anotherController = this.application.getControllerForElementAndIdentifier(this.anotherTarget, 'second')
+			anotherController.method()
+		}
+	+ ? Хотелось бы произвести сценарий, при котором контроллер подключался к DOM
+		но не инициализировался
+		(
+			измени имя контроллера через аттрибут, но не удаляй DOM
+		)
+	? придумать что-то с контроллером для форм, чтобы выбирать какие поля изменять method="PATCH", что остаётся в форме, то и учитывается
+HOTWIRE: TURBO
+	RRRRR!!!!: Mercure hub how to set a new secret
+		Вместо того чтобы использовать тот, что по умолчанию
+		Подозреваю, что для этого нужно покупать подписку
+		https://mercure.rocks/docs/getting-started
+	RRR (HARD C:\Workspace\SYMFONY\SYMFONY VIDEOS\VARIOUS\UX\Symfony UX Turbo\41-server-frame-redirect (1080p).mp4): НА ПОВТОРНОМ: 
+		Цель: ДЛЯ ФОРМ: Либо позволить turbo-frame загружать контент в себя как обычно
+			либо с сервера возвращать new Response(null, 204)
+			и придуманный заголовок (X-App-Location-Uri)
+			в слушателе turbo:before-fetch-request по этим признакам сделать Turbo.visit
+			
+			Это оптимизация, так как turbo-frame не нужен контент для отображения (event.preventDefault)
+			А нужен только редирект, который мы делаем сами
+		1) Придумать аттрибут для такого повидения
+		2) Создать stimulus-controller, который будет слушать turbo:before-fetch-request
+			и добавлять придуманный header (если у формы установлен придуманный аттрибут 1* и это УСПЕШНОЕ 2* + ПЕРЕНАПРАВЛЕНИЕ 3*)
+			чтобы symfony прочитал этот заголовок и выдал пустой ответ со статусом 204
+			установив в ответе придуманный заголовк, который говорит куда можно перенаправляться
+			Turbo.visit(uri from response)
+	R: НА ПОВТОРНОМ: https://ux.symfony.com/
+	R: на повторном добиться отправление сообщения через curl
+		C:\Workspace\SYMFONY\SYMFONY VIDEOS\VARIOUS\UX\Symfony UX Turbo\49-listen-publish (1080p).mp4
+	R: на повторном 
+		реализовать не удаление для turbo-stream а stimulus-controller для плавного исчезновения
+		после появления connect() { this.leave() }
+	? MERCURE: Как получить JWT, подписанный уникальным секретом
+	? private: true: Не получилось авторизоваться через сервис Authorization
+		https://symfony.com/doc/current/mercure.html#programmatically-setting-the-cookie
+	? MERCURE MOCK TESTING: Неужели это стоит того, есть же Panther
+		https://symfony.com/doc/current/mercure.html#testing
+	? E2E TESTING: Как тестировать Mercure без отправки реального сообщения
+	+ ? E2E TESTING: При создании дополнительного Panther client первоначальный не способен отправить форму
+		(
+			Да, это действительно так			
+			При создании дополнительного Panther client, только он способен отправлять форму
+		)
+	? E2E TESTING:
+		1) А если страница уже содержит определённый селектор
+		будет ли она ждать появления нового такого же при wait, assert или 
+		мне кажется что более верояно учтёт тот что есть уже
+		2) а может и wait и assert действуют по разному в этом контексте
+	? Будет проблематично обнаружить expression language provider для ux turbo
+		но если это сделать можно добавить новых функций Broadcast(topics)
+	? Broadcast: не понятно как пользоваться transports, topics опциями
+	? Как избавиться от следующей ошибки при использовании аттрибута немедленной подгрузки data-turbo-preload
+		TypeError: can't access property "style", ajaxToolbarPanel is null
+	? Не понятно зачем turbo-stream нужен аттрибут request-id
+	? Как отрендерить twig component в переменную, чтобы его назначить в аттрибут
+		для отчистки перед кешированием
+	+? data-turbo-stream не понятно зачем нужен
+		(
+			Применияется для ссылок и форм
+			
+			для определения предпочитаемого формата
+			TurboBundle::STREAM_FORMAT === Request::getPreferredFormat()
+		)
+	? data-turbo-permanent: Добавил этот аттрибут к div с контроллером
+		перехожу по той-же странице, но элемент обновляется, хотя по задумке ну не должен наверное
+	? Не понятно какой должен быть refresh чтобы прокрутка сохранилась
+		<meta name="turbo-refresh-scroll" content="preserve">
+	? Как устранить ошибку
+		TypeError: can't access property "style", ajaxToolbarPanel is null
+		при использовании data-turbo-preload="true"
+	? Turbo.setConfirmMethod: как возвратить из функции ответ с контроллера
+	+ ? При навигации совершается несколько ajax на один и тот же ресурс
+		при навигации вообще-то не должно вообще ни одного ajax происходить
+		(
+			из-за <esi:include src="http://google.com"></esi:include>
+		)
+	реализовать https://symfony.com/doc/current/form/form_collections.html#allowing-new-tags-with-the-prototype
+		посмотреть после реализации
+		https://symfony.com/doc/current/form/form_collections.html#javascript-with-stimulus
+	есть ли разница между зафейленой обработанной формой (422) и необработанной формой для UX TURBO
+SWEET ALERT
+SYMFONY LIVE COMPONENTS	
+	На обратном:
+		R ONE SECTION: https://symfony.com/bundles/ux-live-component/current/index.html#deferring-a-re-render-until-later
+		https://symfony.com/bundles/ux-live-component/current/index.html#allowing-an-entity-to-be-changed-to-another
+		Абсолютно не понятна тема с URL секцией: https://symfony.com/bundles/ux-live-component/current/index.html#changing-the-url-when-a-liveprop-changes	
+	+ R: The initialFormData property is not updated until after the form is submitted
+		(
+			Да, в случае если поле объекта не writable
+			Состояние объекта обновляется только после отправки формы ($this->submitForm)
+		)
+	
+	НА обратном секция: https://symfony.com/bundles/ux-live-component/current/index.html#using-livecollectiontype
+	НА обратном реализуй всё, что касается live component: https://ux.symfony.com/demos
+	?
+	обязательно попробуй поменять тему формы именно для добавления нового элемента collection_widget attribute data-collection="<html>"
+	+ ? Как добиться обновления объекта вместо его создания в LiveComponent
+		(
+			Просто доставай его через entity manager :)
+		)
+	+ ? $this->resetForm(): Не сбрасывает поля формы, хотя говорится, что вместо редиректа можно сбросить поля
+		(
+			Функция отрисовывает форму по новому, создавая форму заново
+			
+			Просто обнули $model, которая передаётся вторым аргуметом в createForm
+		)
+	? В чём проблема (в twig component нет ничего об этом массиве)
+		The type of the "id" attribute for class "App\Entity\Media\Image" must be one of "int" ("null" given).
+		
+		/**
+		 * ORM Entity Collection
+		 * @var Image[]
+		 */
+		#[LiveProp(
+			writable: ['filepath'],
+			useSerializerForHydration: true,
+		)]
+		public array $entityCollection = [];
+		
+		public function __construct() {
+			$this->entityCollection = [
+				new Image(
+					filepath: '1 OBJECT',
+				),
+				new Image(
+					filepath: '2 OBJECT',
+				),
+				new Image(
+					filepath: '3 OBJECT',
+				),
+			];
+		}
+	? Не понятно как работать с контекстом, если сериализуется даже то, что в группу не входит
+		useSerializerForHydration: true, serializationContext: ['groups
+	? Либо item либо items зарезервированные для чего-то
+	+ ? Непонятно зачем нужен norender|
+	вызывается или нет PreCreateForRenderEvent при обновлении re-render
+SYMFONY DROP ZONE
+	?
+	Что за баг происходит с отрисовкой компонента при LiveComponent
+	Как сохранять зону dropzone активной для перетаскивания даже после предыдущих забрасываний картинок
+- HOTWIRE: STRADA https://strada.hotwired.dev/
+НА ОБРАТНОМ R: SYMFONY CROPPER
+	?
+	+ Такое чувство что cropper js не обновляется из-за LiveComponent morphing вместо replace
+		(
+			Да это так
+			
+			Используй аттрибут data-skip-morph, чтобы заменять вместо morph
+		)
+	R: Поймать события сервера https://symfony.com/doc/current/http_client.html#consuming-server-sent-events
+R: НА ОБРАТНОМ: SYMFONY WEBPACK ENCORE
+	https://symfony.com/doc/current/frontend/encore/index.html#adding-more-features
+R: НА ОБРАТНОМ: ASSETS MAPPER
+	https://symfony.com/doc/current/frontend/asset_mapper.html
+	https://symfony.com/bundles/StimulusBundle/current/index.html#with-assetmapper
+SYMFONY EasyAdmin
+	***
+	finish C:\Workspace\SYMFONY\SYMFONY VIDEOS\SYMFONY 6\EasyAdmin! For an Awesomely Powerful Admin Area
+	https://symfony.com/bundles/EasyAdminBundle/current/fields/AssociationField.html
+	https://symfony.com/bundles/EasyAdminBundle/current/fields/CodeEditorField.html
+	https://symfony.com/bundles/EasyAdminBundle/current/fields/CollectionField.html
+	?
+	? На обратном: разобраться почему не работает форма login в EasyAdmin
+	? Почему с такой конфигурацией кнопка Aciton::DETAIL не работает
+		->update(
+			Crud::PAGE_INDEX,
+			Action::DETAIL,
+			static fn($a) => $a
+				->displayAsButton()
+				->linkToCrudAction(Action::DETAIL)
+				->setCssClass('btn bg-transparent w-100')
+		)
+	Почему не добавляется batch action (метод approveUsers есть в CRUD) + как решишь попробуй Request вместо BatchActionDto $request->request->all('batchActionEntityIds')
+		->addBatchAction(Action::new('approve', 'Approve Users')
+			->linkToCrudAction('approveUsers')
+			->addCssClass('btn btn-primary')
+			->setIcon('fa fa-user-check')
+		)
+	? А кудаже спрятались переменные, передаваемые в шаблон
+		https://symfony.com/bundles/EasyAdminBundle/current/crud.html#passing-additional-variables-to-crud-templates
+	? $searchDto->getSearchableProperties()
+	? В чём причина
+		В своей entry point webpack encore указал файл css, в котором переопределил :root var
+		но приоритета либо не хватает, либо по другой причине не устанавливается стиль
+	? Как CRUD контроллеры связаны с DashboardController вообще
+		Потому что при наличии нескольких DashboardController
+		при создании url необходимо указать определённый DashboardController
+	Не передаётся параметр перевода %entity_label_plural% ->setPageTitle(Crud::PAGE_INDEX, '%entity_label_plural%')
+	? Не понятно как это модифицирует интервал
+		если вооще такого типа поля нет
+		->setDateIntervalFormat('%%y Year(s) %%m Month(s) %%d Day(s)')
+	? При рендере MenuItem::linkToCrud возникает исключение
+		Call to a member function getAsDto() on null
+	? When using Doctrine filters, listings may not include some items because they were removed by those global Doctrine filters. Use the dashboard route name to not apply the filters when the request URL belongs to the dashboard You can also get the dashboard route name via the application context variable.
+	? Что это означает
+		TextField::new('firstName', t('Name'))
+codemirror5 Text Editor
+	https://codemirror.net/docs/
+	?
+	+ Не получилось найти селектор css для изменения стиля главного выделенного
+		(
+			Есть в официальной документации, но победил я это с использованием !important
+			и прозрачностью для background-color в cm-activeLine
+		)
+Trix Text Editor
+	R: На обратном: В своём компоненте twig:grinway:trix стилизовать иконки
+		с офф. сайта https://trix-editor.org/ самому сделать разметку trix-toolbar
+SYMFONY WORKFLOW
+	RRRRR: Telegram Bot API https://core.telegram.org/bots/api
+		+ создать telegramService
+			его стратегии ответа должны быть тегированы, чтобы не передавать параметром, а были в коллекции сразу у telegramService:
+				supports
+				getSubject
+				getOptions
+		+ telegram_user_order (workflow)
+	?
+	Не получилось получить контекст = WORKFLOW->apply(), который был изменён в workflow.enter EventListener
+LIB MOBILE DETECT:
+	RRR: Используя Stimulus Carousel Component назначить pointer-events: none;
+		в случае если это телефон, для запрета взаимодействия с картинкой
+	+? Stimulus Carousel Component все слайды отображаются одновременно
+		Я делал это в EasyAdmin index, где не было app Entry Point
+	? По неизвестной причине mobile detect не обнаружил что я вошёл с телефона
+SVG ANIMATIONS
+	RRR: На обратном: реализуй разные анимации для
+		анимация простоя (css)
+		hover (svg иммитация клика, по тому элементу, которому не достанется за счёт bubbling событие клика когда будет реальный клик от css анимации)
+		click (css)
+	?
+	+ ? Для чего нужен svg "by" attribute
+		(
+			для анимации через наращивание значения (values, additive="sum" === from, by)
+		)
+	?? Как сделать анимацию вращения текста по окружности непрерывной (startOffset думаю не подойдёт)
+	+ ???? Как перезапустить svg анимацию через js
+		Как же всё таки запустить svg анимацию по hover
+		что нужно сделать в stimulus controller when useHover
+		если установка begin="0s", и удаление end аттрибутов бессмысленна так как время отсчитывается с момента появления svg изображения
+		и даже удаление и внесение обратно в DOM в с помощью JS не помогает
+		(
+			Остановить: repeatDur="0.001s" 
+			Запустить: repeatDur="100h"
+		)
+BOOTSTRAP (not deep)
+	RRR: Обязательно просмотри ВЕСЬ ФАЙЛ!
+		C:\Workspace\SYMFONY\__SANDBOX__\drafts\node_modules\bootstrap\scss\_utilities.scss
+		Он очень важен, на основе $utilities ассоциативного массива (map)
+		ГЕНЕРИРУЮТСЯ ОСНОВНЫЕ BOOTSTRAP CSS classes
+		{class}-{breakpoint}-{value}-{state}
+		{flex} -{md}        -{grow-0}
+
+		{class}-{print}-{value} // breakpoint & state не смешиваются с print (отдельная генерация)
+
+		class, valueMapKey и valueMapValue могут быть null
+	R: использовать анимации svg со спрайтами
+	?
+	? Как из " получить &#34; а не &quote;
+	? Возможно ли в d-flex элементам задать равную ширину, НЕЗАВИСИМО от содержимого
+		так как flex-fill === flex-grow-1 растягивают элементы во flex container в зависимости от содержимого
+		а col element должен использоваться внутри row если речь о flex container
+	+ ? Если flex-fill === flex-grow-1 даёт flex element возможность растягиваться
+		то я так и не понял что даёт flex-shrink-{1, 0}
+		(
+			flex-shrink-0 не позволяет сжиматься (зависит от содержимого)
+				Слова например не переносятся на новую строчку
+			flex-shrink-1 позволяет сжиматься (зависит от содержимого)
+		)
+	??? При html[dir="rtl"] Стиль всё равно применяется даже если указать /*rtl:ignore*/
+		https://rtlcss.com/learn/usage-guide/control-directives/index.html
+		использовал rtlcss js библиотеку https://habr.com/ru/companies/2gis/articles/416635/
+	+ ? Почему sticky не работает
+		Он ведь должен оставлять child el в определённой позиции of parent el
+		(
+			Из-за наличия overfow: hidden у parent sticky не работало
+			
+			Чтобы sticky работало (то есть дочерний элемент скользил внутри)
+			Полосы прокрутки у parent не должно быть
+		)
+	+ ? How to assign css pseudo class to HTML DOM element with javascript
+		(
+			el.<determinedCssPseudoClass> = true
+		)
+	+ ? Как убрать лишний отступ всерху и снизу
+		<div class="row">
+			<div class="col">1</div>
+			<div class="w-100"></div> {# Вот тут появляется очень большой отступ #}
+			<div class="col">2</div>
+		</div>
+		(
+			Не указывать фиксированную высоту блоку .row
+		)
+SYMFONY WebLink
+SYMFONY WEBHOOK
+	?
+	? Mailgun говорит что используя webhook ты можешь даже получать какие-то данные
+		https://www.mailgun.com/blog/email/your-guide-to-webhooks/
+	? Mailgun получи наконец событие ::handleMailEngagement()
+SYMFONY PROCESS COMPONENT
+	?
+	+? Никак не получается передать по ходу диалога с командой более 1-го параметра
+		(
+			Получилось только благодаря смекалочке, Process ни при чём
+			
+			$command = Process::fromShellCommandLine('echo "n,n" | xargs -n1 -d"," echo | php.exe "../bin/console" test');
+		)
+SYMFONY SANTIZER
+	?
+	+ ? Такое чувство что недостаточно просто добавить framework.html_sanitizer.sanitizers
+		чтобы появился новый sanitizer service	
+		(
+			Этого достаточно, была ошибка в написании
+		)
+SYMFONY VAR EXPORTER
+SYMFONY FILESYSTEM
+HOTWIRE: SYMFONY STIMULUS UX PACKAGES
+@SYMFONY/UX-AUTOCOMPLETE
+	?
+	? Оказывается, что все поисковые записи регистро-нечувствительны
+		и у меня не получилось понять как мне заставить в filter_query: 'entity.<> LIKE :query'
+		стать регистрозависимой ведь нативно она так то должна быть регистрозависимой
+@SYMFONY/UX-NOTIFY
+	?
+	????when@docker Оба примера ниже выдают исключение, но почему?!
+		//#1
+		$message = (new ChatMessage(
+				subject: 'Ну штош Время платить 15 денег',
+				options: new MercureOptions(['native_browser_notification'])
+			))
+				->transport('mercure')
+		;
+		$this->chatter->send($message);
+
+		//#2
+		$notification = (new ChatterNotification(
+			subject: 'Ну штош',
+			channels: ['chat/mercure'],
+			options: new MercureOptions(['native_browser_notification']),
+		))
+            ->content('Время платить 15 денег')
+		;
+		$recipient = new NoRecipient();
+		$this->notifier->send($notification, $recipient);
+		
+		//# HandlerFailedException
+		Handling "Symfony\Component\Notifier\Message\ChatMessage" failed: Call to undefined method Symfony\Component\Notifier\Exception\RuntimeException::getDebug()
+		(
+			Во первых ты в своём же слушателе FailedMessageEvent вызввал несуществующий метод getDebug()
+			Но сразу же за ним последовало
+			Handling "Symfony\Component\Notifier\Message\ChatMessage" failed: Unable to post the Mercure message: Failed to send an update
+			А вот эта ошибка никогда не проходит, попробуй с docker
+			Короче ошибка точно связана с Mercure, просто что-то произошло и Mercure отказывается работать, происходит какая-то ошибка
+		)
+@SYMFONY/UX-ICONS
+	?
+	? Похоже на то, что ignore_not_found просто отрисовывает вместо иконки ошибку
+		вместо выбрасывания исключения о ней
+SYMFONY FRONTEND (WEBPACK ENCORE/ASSET MAPPER)
+	+ ? не могу утверждать, но мне кажется, что при различных параметрах GET
+		браузер создаёт различный кеш
+		(
+			Да, браузер сохраняет кеш, учитывая все символы uri
+		)
+	+ ??? WEBPACK + TURBO DRIVE: если зависимость была асинхронно импортирована import() на одной странице
+		используя turbo drive при переходе на другую страницу будет ли существовать импортированная зависимость
+		(
+			Конечно!
+			
+			Ведь перезагрузки браузера не было, значит он помнит весь js который:
+				был загружен через head
+				когда либо исполнен ( в том числе и eval() )
+		)
+	? при каком условии при сборке проекта yarn encore dev в build попадут картинки
+	The asset() function supports various cache busting techniques
+		https://symfony.com/doc/current/reference/configuration/framework.html#reference-framework-assets-version
+		https://symfony.com/doc/current/reference/configuration/framework.html#reference-assets-version-format
+		https://symfony.com/doc/current/reference/configuration/framework.html#reference-assets-json-manifest-path
+	https://symfony.com/doc/current/frontend/create_ux_bundle.html
+R: PUSH NOTIFICATION
+	//###> PURE FIREBASE SENDING https://firebase.google.com/docs/cloud-messaging/js/client?authuser=0&hl=en
+	// get it via javascript 'firebase/messaging' module ({{ stimulus_controller('firebase-messaging') }})
+	// RIGHT: js->REST API чтобы отослать push, так как только js знает о userDeviceToken
+	$userDeviceToken = ''; // R
+	
+	$oAuth2AccessToken = $firebaseService->getOAuthToken();
+	$projectId = 'woodenalexpushnotifications';
+	$method = 'POST';
+	$imagePublicPath = $stringService->getPath($appUrl, 'clients/media/image/p4.jpg');
+	$url = \sprintf('https://fcm.googleapis.com/v1/projects/%s/messages:send', $projectId);
+	$payload = [
+		'headers' => [
+			'Authorization' => \sprintf('Bearer %s', $oAuth2AccessToken),
+			'Content-Type' => 'application/json',
+			'Host' => 'fcm.googleapis.com',
+		],
+		'json' => [
+			'message' => [
+				// userDeviceToken
+				'token' => $userDeviceToken,
+				'notification' => [
+					'title' => 'Symfony title',
+					'body' => 'Symfony body',
+					'image' => $imagePublicPath,
+				],
+				'webpush' => [
+					'fcm_options' => [
+						'link' => $appUrl,
+					],
+				],
+			],
+		],
+	];
+	$firebaseResponse = null;
+	$firebaseResponse = $client->request($method, $url, $payload);
+	\dump(
+		$firebaseResponse?->getContent() ?? null,
+	);
+	?
+	+ Firebase (основная проблема в том, что не могу получить device token)
+		// https://stackoverflow.com/questions/76529438/send-push-fcm-to-multiple-devices-with-curl-in-v1-api
+		$oAuth2AccessToken = $firebaseService->getOAuthToken();
+		$pId = 'demopush-68e36';
+		$method = 'POST';
+		$storyId = '';
+		$userDeviceToken = ''; // R
+		$imagePublicPath = $stringService->getPath($appUrl, 'media/image/png.png');
+		$url = \sprintf('https://fcm.googleapis.com/v1/projects/%s/messages:send', $pId);
+		$o = [
+			'json' => [
+				'message' => [
+					'token' => $userDeviceToken,
+					'notification' => [
+						'title' => 'Symfony title',
+						'body' => 'Symfony body',
+						'image' => $imagePublicPath,
+					],
+					//'topic' => 'Symfony topic',
+					'data' => [
+						'key' => 'value',
+					/*
+						'story_id' => $storyId,
+					*/
+					],
+				],
+			],
+			'headers' => [
+				'Host' => 'fcm.googleapis.com',
+				//'Content-Type' => 'application/json',
+				'Authorization' => \sprintf('Bearer %s', $oAuth2AccessToken),
+			],
+		];
+		$response = $client->request($method, $url, $o);
+		
+		\dump(
+			$response,
+			$client->getResponse(),
+		);
+		
+		\dd('Try pure FCM v1');
+	OneSignal (подозреваю, что для ID должен быть задан тот самый device token)
+		$subject = 'Symfony Notifier';
+		$content = <<<'__TEXT__'
+		# I can't send push for days
+		__TEXT__;
+		
+		$notification = new Notification(
+			subject: $subject,
+			channels: [
+				'push/onesignal',
+			],
+		);
+		$notification
+			->content($content)
+			->importance(Notification::IMPORTANCE_LOW)
+			->emoji('💕')
+		;
+		
+		$recipient = new Recipient(
+			email: $adminEmail,
+			phone: $adminPhone,
+		);
+		
+		$notifier->send(
+			$notification,
+			$recipient,
+		);
+		
+		или 
+		
+		$options = (new OneSignalOptions())
+			->recipient($appOnesignalDefaultRecipientId)
+			->url($appUrl.'/push/displayed/webhook')
+			/*
+			->externalId('') // Uuid::v4()
+			->isExternalUserId()
+			->headings([])
+			->contents([])
+			->data([])
+			->sendAfter(Carbon::now('UTC')->add(1, 'second'))
+			*/
+		;
+		
+		$message = (new PushMessage(
+			$subject,
+			$content,
+		))
+			->transport('onesignal')
+			->options($options)
+		;
+		
+		$texter?->send($message);
+		(
+			Device token приобретается за счёт js 'firebase/messaging'
+		)
+	? На OneSignal пишется что push доставлено, но на самом деле нет
+SYMFONY INTL COMPONENT
+SYMFONY MONOLOG
+	?
+	? Как прекратить дамп в консоль при "symfony console messenger:consume --all"
+		Application level, doctrine channel: постоянно дампит
+	? symfony server:start --no-tls (возможно ли обнаружить logger.hander или logger.channel у [Application])
+		который используется для дампа Application информации, или он вообще не имеет ни того не другого
+		что самое интересное, независимо от handler, channel он использует все процессоры
+	? Не понятно для чего нужен Logger::reset() если он не очищает ни файл, не текущие записи
+		(ведь запись происходит немедленно)
+	? Как исключить ошибки консоли (или как слушать только http, https ошибки)
+	+ ? Если я укажу обработчику несколько каналов для срабатывания
+		и укажу его у какого-нибудь другого finger_crossed обработчика
+		будут ли идти записи от каналов и от finger_crossed паралельно
+		(
+			Неправильно мыслишь,
+				finger_crossed это барьер, если достиг, все записи с запроса идут дальше
+			
+			Кстати channels не игнорируется только у самого верхнего handler
+		)
+SYMFONY PROFILER
+	реализовать свой DataCollectorInterface, *Pass который добавит в сервис Profiler, если он есть, addCollector
+		думаю достаточно просто тегнуть сервис with "data_collector", вместо вызова addCollect
+	?
+	+ ? по каким-то причинам profiler тупо иногда либо не отображается либо просто перестаёт работать
+		(
+			framework.profiler.enabled: true
+			framework.profiler.collect: true
+			
+			И никаких проблем
+		)
+	+ Почему сервис Psr\Container\ContainerInterface не доступен из services.yaml
+	(
+		Потому что identifier сервиса неверный (правильный: Psr\Container\ContainerInterface $parameterBag)
+		
+		Правило такое:
+			хочешь провести что-то по service id который совпадает с типом: bin/console debug:autowiring
+			если идентификатор не совпадает с типом: bin/console debug:container
+	)
+SYMFONY PERFOMANCE
+SYMFONY BUILT-IN SERVICE TAGS
+SYMFONY LOCAL WEB SERVER
+	?
+	? Почему-то не получается создать локальное доменное имя за счёт proxy
+DOCKER
+	?
+	? Если попробовать выполнить "docker compose up -d" без "database" в compose.yarn
+		почему-то будет ошибка, что неправильная конфигурация compose.yaml без database
+		НО кто за эту ошибку ответственен, это получается я не могу запустить сторонний контейнер с БД
+		и лишь затем запустить приложение
+	? Я до сих пор не понял о каком email catcher они говорят: https://symfony.com/doc/current/mailer.html#enabling-an-email-catcher
+	? Хочу открыть сайт на 127.0.0.1:8000, почему описывая в Dockerfile ENTRYPOINT ["php", "-S", "0.0.0.0:80"]
+		-p 8000:80
+		Я попадаю на 127.0.0.1:8000 без ошибок
+	? Короче вопрос: если docker container имеет несколько networks то указав -p 8000:80,
+		порт 80 вообще к какой сети привязан? Это же нигде не описывается
+
+		Если для docker container имеет 2 network и так же указан -p 8000:80 то docker порт 80
+		он к какой сети то вообще привязан, это же не описывается нигде
+	+ ? Зачем вообще нужен -it когда делаешь docker run
+		docker run ... -it IMAGE CMD // Есть ли в этом -it вообще смысл?
+		(
+            Правило такое: run -it когда потенциально будет интерактивный tty(консоль может что-то ввоидить) режим с контейнером
+		)
+	? Как создать инструкции Dockerfile так чтобы ты мог при docker run сразу исполнить -it /bin/bash
+		и тем самым войти в Linux OS
+	? Не смог найти где хранится именованый volume
+	? По неизвестной мне причине, открыв порт в docker container, заходя 1 раз по этому ip
+		фактически на ip заходишь дважды! Но почему и как это исправить
+	? Как же быть когда хочешь и php image и node image в одном и том же image
+	? Хочу запустить простейший локальный сервер, создав и запустив контейнер, но не могу
+		Что не так
+
+		# Файл Dockerfile
+		FROM php
+		EXPOSE 8000
+		COPY . .
+		CMD ["php", "-S", "127.0.0.1:8000"]
+
+		# Запуск
+		docker build .
+		docker images
+		docker run -p 8000:8000 <>
+
+	? Неужели чтобы транслировать изменения не нужно запускать Mercure.hub бинарный файл
+		при использовании docker
+SYMFONY DOCKER
+	?
+	? Не могу запустить panther(E2E) test в docker container
+		для локального ПК помогла установка папки drivers в переменные среды! Удивительно.
+		https://symfony.com/doc/current/testing/end_to_end.html#docker-integration
+	+ ? Symfony некак не видит контейнер mysql (DSN: mysql://root:root@172.18.0.1:3306/main?charset=utf8mb4)
+		An exception occurred in the driver: SQLSTATE[HY000] [2002]
+		Интересно в чём же ошибка, уже 4-ый час сижу и понять не могу
+		(
+			Дело в том что есть ip, domain для общения ТОЛЬКО между docker containers:
+				gateway ip, domain
+			А для того чтобы через браузер получить доспуп к docker container
+				необходим host(current PC) ip, и тот самый тунельный port, который связывает host ip with docker container
+			То есть если тип сети bridge, ip это вещь постоянная и зависит от current host(PC) ip
+				а вот разнится только тунельный ip (-P)
+		)
+	? Неужели symfony не может сделать docker compose из-за исключения на / route
+	? Хотел указать базу данных под ключом db, но "docker compose" выдаёт ошибку 15
+		поменял service.db на service.database docker compose собрал контейнеры
+		Вопрос: понять бы как symfony взаимодействует с docker, что вместо docker-compose.yaml мы пишем compose.yaml
+SYMFONY SETUP
+WEBSTORM
+	?
+	? yaml: как перейти от (неполучилось)
+		key:
+			- value
+		
+		к
+		
+		key:
+		-	value
+SYMFONY REDIS BUNDLE
+	?
+	? В redis docker не получилось передать свой конфиг из за ошибки несуществующего пути
+		просто нужен правильный конфиг, хотел сделать "maxmemory 500mb"
+		https://symfony.com/doc/current/components/cache/adapters/redis_adapter.html#configuring-redis
+RSYNC (выгрузка файлов на сервер)
+	?
+	+ ? Не получается выгрузить на сервер файлы с помощюь команды
+		(
+			просто запусти rsync из docker container, на windows он действительно не работает
+		)
+.htaccess
+SYMFONY CONSOLE / COMMAND
+	?
+	+ возможно ли динамически переименовывать команды, задавать алиасы
+	(
+		Просто вместо #[AsCommand] опиши имя и алиасы в Command::configure
+	)
+	+ ? Test hidden question: Тест скрытого question зависает навсегда
+	(
+		Symfony скрывает ввод в консоли другими бинарниками, которые читают пользовательский ввод
+		я же в тесте назначаю именно для ArrayInput resource fopen(php://memory...)
+		Это означает что бинарники никогда не получают ввод, а значит его и не получает скрытое поле
+		
+		Плохое Решение: Во время теста вбей данные на лету
+		Хорошее Решение: Тестируй на Linux через docker
+	)
+	+ ? Это не критично, но как запретить вывод переданных аргументов для тестируемой команды
+		(
+			Ты просто по ошибке в своей же команде делал дамп...
+		)
+	+ R: Посмотреть как реализована замена строки у команды bin/console ux:icons:import bi:arrow-left-short
+		Подозреваю что это progress bar
+		(
+			Нет, для перемещения по терминалу используй
+			$cursor = new Cursor($output);
+		)
+	+ ? Зачем и как вообще пользоваться ApplicationTester
+		(
+			ApplicationTester то же самое что и CommandTester
+			
+			НО
+			
+			CommandTester         НЕ отправляет консольные события
+			ApplicationTester     ОТПРАВЛЯЕТ консольные события
+		)
+	+ ? Похоже используя output::section невозможно тестировать команды
+		(
+			Нет, это возможно но будет сложнее
+		
+			Потребуется реализовать ConsoleOutputInterface
+			И тестировать без использования CommandTester, ApplicationTester
+			потому что output нужно будет передавать вручную
+		)
+	+ ? Как задать контекст комманде, чтобы был https, и вместо localhost было 127.0.0.1:8000
+		так как изменение параметров router, asset не повлияло на сервис UrlGeneratorInterface
+		(
+			На самом деле параметры router, asset действительно влияют на UrlGeneratorInterface service
+			
+			php bin/console debug:container --parameter=router
+			php bin/console debug:container --parameter=asset
+			
+			Просто проект был большим, и где-то эти параметры конфликтовали
+		)
+SYMFONY API PLATFORM
+	Не понятно
+	https://api-platform.com/docs/guides/error-provider/
+	https://api-platform.com/docs/guides/return-the-iri-of-your-resources-relations/#section-1
+	https://api-platform.com/docs/guides/extend-openapi-documentation/
+	https://api-platform.com/docs/guides/http-cache-tags/
+	https://api-platform.com/docs/guides/how-to/
+	https://api-platform.com/docs/core/operations/#defining-which-operation-to-use-to-generate-the-iri
+	https://api-platform.com/docs/core/operations/#expose-a-model-without-any-routes
+	?
+	? Как параметры uriTemplate сделать опциональными...
+	? Как задать default uri value id, чтобы api platform его не спрашивал
+	? SerializedName не читается при запросе на создание (POST)
+	? Почему-то под этот фильтр попадают и "al" части
+		#[ApiFilter(SearchFilter::class, properties: ['description' => 'partial'])]
+	+ ? Почему-то глобальные и ApiResource настройки для pagination не читаются
+		(
+			Разные вещи:
+			
+			pagination_items_per_page
+			pagination_maximum_items_per_page
+		)
+	- ? ApiResource не появляются в /api/docs.html
+		я подозреваю что это из-за того что пользуясь docker, symfony устанавливает
+		свою DATABASE_URL, в то время как я её тоже определяю
+		(
+			Это однозначно конфликт! Но вот только с чем я не понял
+			
+			Потому что я создал новый проект с api resource и всё появилось.
+			Так что установку api platform лучше делать заранее,
+		)
+FOUNDRY (faker + symfony)
+SYMFONY TEST BUNDLE
+	?
+	? Не получается поймать исключения как assertion
+	+ ? PANTHER_BROWSER: Использует подключение не к тестовой базе данных
+		(
+			Используй "BROWSER_ALWAYS_START_WEBSERVER" в .env.test
+		)
+	+ ? PANTHER_BROWSER: Не получается с помощью Foundry загрузить базу данных данными
+		Соединение установлено правильно за счёт "BROWSER_ALWAYS_START_WEBSERVER" именно с тестовой БД
+		так же база данных удаляется и воссоздаётся заново
+		Но данные не грузятся
+		(
+			Конечно же это из-за DAMA extension
+			Транзакция тупо отменялась, по этой причине я не вижу смысла использовать DAMA Extension
+			Если есть ZENSTRUCK BROWSER
+		)
+SYMFONY Dotenv class
+SYMFONY VARDUMPER
+doctrine-test-bundle
+SYMFONY сопостовитель полей в DTO
+SYMFONY ROUTE
+	CMF Routing Bundle
+Cache with Memcached
+	?
+	?? Никак не коннектится memcached 
+		"Memcached > 3.1.5 is required"
+		Запустил на docker container с открытым портом 11211
+EMAIL MESSENGES INKY
+VIDEO.JS
+	?
+	? videojs.options.controls = true не срабатывает
+(create QR Code)
+	ENDROID QR CODE GENERATOR
+	?
+	выдаёт исключение imagettfbbox(): Could not find/open font (label)
+(read QR Code)
+	PHP QR CODE DETECTOR DECODER
+PHP CREATE PICTURES GREGWAR IMAGE
+	?
+	+ Не получилось merge картинок
+	(
+		Для watermark нужна определённо другая библиотека PHP GD
+	)
+SYMFONY HTTP CLIENT
+	?
+	- + ? Странно что не вызывается HttpOptions::setOnProgress при запросе, ведь я его установил!
+		Даже для stream не вызывается
+		https://symfony.com/doc/current/http_client.html#progress-callback
+		(
+			Не знаю почему, но теперь вызывается... хз
+			Просто теперь вызывается on_progress, а затем HttpClient::stream(Response)
+		)
+	? Как же загадочно, что используя ngrok я не могу используя HttpClientInterface service запросить содержимое своей страницы, проблем с сертификатом ssl нет, но запрос просто виснет... Но ПОЧЕМУ
+		при этом в тестах я даже без ngrok могу обращаться к своему же сайту
+	? когда отключен verify_peer, verify_host сначала выдаёт ошибку что вышло время подключения
+		а затем ПРОХОДИТ по ссылке
+		что-то задерживает приём ответа с сервера
+	+ ?? не получилось по scoped_clients.scope установить заголовки запроса при httpClient::request (для scope автоматисески создаётся новый именованный client service, и он был виден через debug:auto просто искать нужно было аккуратней с твоим grep)
+	? как из ответа сервера узнать отправлялись ли куки в запросе
+	? verify_peer не работает, SSL ошибка продолжает выдаваться
+	? как указать самоподписанный SSL сертификат, при обращении к другим сайтам: CAfile: C:/OSPanel/data/ssl/cacert.pem
+	+ ? не понятно куда скачивается файл
+	(
+		При использовании HttpClient::stream(Response) в php://temp
+		Но конечно обрабатывать скачивание нужно вручную из $chunk
+	)
+	+ нет вызова callback на прогресс HttpClient(HttpOptions::setOnProgress) (используя сервисный HttpClientInterface on_progress действительно не вызывается, но если создать вручную то вызывается)
+SYMFONY DOCTRINE
+	?
+	+ - Как сделать резервную копию БД
+	(
+		Через mysqldump бинарник
+		
+		Но на windows вылезает ошибка что консоль не поддерживает tty
+	)
+	? По какой-то непонятной причине если есть папка src/Bundle Doctrine выдаёт исключение что нет src/Bundle/Entity
+	+ как найти имя сущности в Repository
+		(
+			getClassName
+		)
+	~ реализовать сущность UserAuthentication extends AuthenticationMappedSuperClass:
+		relation сущность AccessTokenAuth[
+			access_token
+		]
+		relation сущность Auth2FA[
+			totp,
+			google code,
+			email,
+			backup codes
+		]
+		relation сущность OAuth[
+			github,
+			telegram,
+			google
+		]
+browser-driver-installer
+PHP PARALLEL
+PHP TOTP LIB
+PHP FPDF
+KNP PAGINATION
+JS LODASH LIB
+php-webdriver
+FROM MARKDOWN to html (php parsedown, commonmark)
+from html TO MARKDOWN (html-to-markdown)
+- SYMFONY SECURITY LDAP
+TESTS
+	?
+	+ ? Почему title несуществует в E2E
+		(
+			WebDevChromium browser не отображает некоторые неотображаемые элементы
+			head > meta , head > title упускаются
+			
+			Просто не используй реальный браузер для таких вещей
+		)
+SYMFONY TRANSLATION
+TWIG
+	?
+	+ Я так пологаю переопределить шаблон не бандла не получиться
+		так как нет twig.yaml где определяются paths: ...
+		(
+			Это не так.
+			
+			Можно определить namespace в своём проекте на путь папки с шаблонами библиотеки
+		)
+	+ Если есть несколько twig namespace и первый инвалидный, а второй валидный то всё будет работать ок?
+		предпологаю что да
+		(
+			Абсолютно верно, twig ищёт шаблоны (paths: ~ then default) с первого определённого до первого валидного
+		)
+SYMFONY SESSION
+	не получилось https://symfony.com/doc/current/session.html#encryption-of-session-data
+		Circular reference detected for service
+SYMFONY MAKER BUNDLE
+COMMONMARK
+SYMFONY BEST PRACTIES
+MAILER Beanstalkd Transport
+MESSENGER WITH AMQP (HIGHLY HARD ON WINDOWS)
+GIT HUB ACTIONS
+	R: на обратном: сначала до 47 минуты https://www.youtube.com/watch?v=Tz7FsunBbfQ&ab_channel=freeCodeCamp.org
+	+ ? Долгое время не мог получить удалённый доступ к БД на хостинге mcHost
+		(
+			решением было разрешить "удалённый доступ"
+		)
+	+ ? При попытке подключения к тестовой БД на хостинге mcHost возникает 1044 Access denied
+		(
+			в списке хостов был только хост (ip) моего сайта
+			Это означало что доступ к БД может быть получен только с самого сайта
+		)
+SYMFONY UX-MAP LEAFMAP GET STARTED
+	https://leafmap.org/get-started/#use-ipyleaflet-plotting-backend
+	?
+	+ ? Как скрыть по умолчанию маркер, чтобы его можно было показать в layer control
+	(
+		map.removeLayer
+	)
+GIT HUB SECURITY
+SYMFONY BUNDLE FOSJsRoutingBundle (route -> uri in js)
+SYMFONY BUNDLE FOSHttpCacheBundle (invalidate cache)
+Varnish
+	https://www.youtube.com/watch?v=-cWs6eoyaLg&t=230s&ab_channel=HusseinNasser
+	?
+	? Вообще ни в какую не получилось заставить varnish работать
+		запускал на docker, с тем же network что и проект (то есть я даже проект в docker container запускал)
+		всё равно ошибка
+		Error 503 Backend fetch failed
+		Backend fetch failed
+		Guru Meditation:
+		XID: 188
+		Varnish cache server
+Lexic JWT Auth (аутентификация через Header Authentication Bearer) {JWT}
+	?
+	+ ? Не получилось инвалидировать JWT с помощью конфигурации
+	(
+		При инвалидации (/logout) нужно передать в запросе токен
+	)
+Refresh JWT Tokens
+Cross-Origin Resource Sharing
+Geolocation API
+***
+Telegram Bot Api
+	1 Заметки
+	2 https://core.telegram.org/bots/webapps#initializing-mini-apps openInvoice
+	
+	All methods in the Bot API are case-insensitive.
+	All queries must be made using UTF-8.
+	Что за message_reaction
+	Что за boost в чате chat_boost (A chat boost was added or changed. The bot must be an administrator in the chat to receive these updates.)
+	from.added_to_attachment_menu то есть пользователь как-то может добавить бота в attach menu
+	telegram difference between group and supergroup
+	telegram difference between group and channel
+	Custom emoji entities can only be used by bots that purchased additional usernames on Fragment
+	Telegram how to use text entities in poll
+	Есть ли method для скачивания файлов по их file_id
+	telegram how to allow bot change my emoji status
+	telegram add chat to the group
+		https://core.telegram.org/bots/api#banchatsenderchat
+	telegram how to set group sticker set
+		https://core.telegram.org/bots/api#setchatstickerset
+	telegram login and logout
+	https://core.telegram.org/bots/api#createchatsubscriptioninvitelink
+	Bots with privacy mode enabled will only receive commands in groups under special conditions, see here.
+		https://core.telegram.org/bots/features#privacy-mode
+	Как надёжно узнать message_id, отправленное ботом
+		потому что у меня null === sentMessage
+	What custom emoji sticker is
+		https://core.telegram.org/bots/api#getcustomemojistickers
+	Telegram web app
+		https://core.telegram.org/bots/api#answerwebappquery
+	Telegram mini app
+		https://core.telegram.org/bots/api#savepreparedinlinemessage
+	Inline invoice
+		https://core.telegram.org/bots/api#answerinlinequery
+		https://core.telegram.org/bots/api#inputinvoicemessagecontent
+	Test telegram webhook with your Telegram[Message|InlineQuery|InlineButton|Button|Location...]PayloadProvider
+	Warning: It is critical to make sure your bot only accepts multiple payments when the order can be processed correctly. This is especially important if you are using multi-chat, inline or single-chat, multi-use invoices.
+	возможно ли открыть telegram app в чате используя какой-нибудь POST request
+	How to use telegram fragment bot name
+		https://fragment.com/
+	How to draw telegram stickers in html canvas
+	
+	https://www.youtube.com/watch?v=l_Jgrdv5u6M&ab_channel=SmartFixer
+	https://www.youtube.com/watch?v=3SNS62kvvJ8&ab_channel=HowtoOnline
+	https://www.youtube.com/watch?v=gk_tPOY1TDM&ab_channel=JorenWouters
+	https://www.youtube.com/watch?v=Ln6_psmTt1Q&ab_channel=EasyEarl
+	https://www.youtube.com/watch?v=7ACJP-B0fcQ&ab_channel=Studyingmydevices
+	https://core.telegram.org/bots/api#recent-changes
+	https://core.telegram.org/bots/api#using-a-local-bot-api-server
+	https://www.youtube.com/watch?v=IkfPZJUKcew&ab_channel=SmartBotsLand
+	https://www.youtube.com/watch?v=QyU3KWmkB2o&ab_channel=JorenWouters
+	https://postium.ru/kommentarii-ot-imeni-kanala-v-telegram/
+	https://core.telegram.org/bots/api#sendgift
+	
+	# tg apps
+	https://core.telegram.org/bots/webapps
+	
+	https://core.telegram.org/bots/api#setuseremojistatus
+	https://core.telegram.org/bots/webapps#initializing-mini-apps
+	
+	
+	
+	?
+	? Зачем в методе sendPoll, options[].text_entities
+	? Payment [description]: Не получилось сделать перенос слов
+	? Что за кнопка в чате с ботом справа
+	
+	RRR: Сделать чат бота для скачивания фильмов + парсинг голоса искусственным интеллектом
+		HttpClientInterface::request('GET', $uriForAIDownloading)
+
+PRODUCTION
+	cache: https://symfony.com/doc/current/components/cache/adapters/apcu_adapter.html
+	cache: будет полезно поставить Shedule для выполнения php bin/console cache:pool:prune раз в неделю
+	https://symfony.com/doc/current/setup/web_server_configuration.html#nginx
+	
+	Протестируй отправку email with "ZENSTRUCK MAILER TEST"
+		https://github.com/zenstruck/mailer-test
+	?
+	process manager Supervisor or systemd for messenger	
+	проверить timezone у messenger doctrine
+	Утилиты для управления ENV_VAR https://docs.platform.sh/guides/symfony/environment-variables.html?utm_source=symfony-cloud-sign-up&utm_medium=backlink&utm_campaign=Symfony-Cloud-sign-up&utm_content=docs
+	custom env loader (configuraiton)
+	https://symfony.com/doc/current/contributing/code/conventions.html
+	SYMFONY DEPLOYMENT https://symfony.com/doc/current/deployment.html
+	??? запустить "php bin/console lint:twig --format=github" GitHub Actions
+	PUSH (Firebase) реализовать на https хостинге (по сути на реальном сайте)
+		https://firebase.google.com/docs/cloud-messaging/js/client?authuser=0#next_steps
+	https://symfony.com/doc/current/contributing/community/releases.html
+	Enable APC and then use this cache to save something on local server
+	UPGRADING TO A NEW MAJOR
+		https://symfony.com/doc/current/setup/upgrade_major.html
+	https://stackoverflow.com/questions/24448261/how-to-install-apcu-in-windows
+	Очисти OPcache на развёрнутом сервере
+		\opcache_reset()
+	mcHost исполнить php --ini
+		и выяснить есть ли opcache
+	mcHost есть ли у них docker
+	SYMFONY FORMATS/STANDARDS
+		https://symfony.com/doc/current/contributing/documentation/format.html
+		https://symfony.com/doc/current/contributing/documentation/standards.html
+	один docker container пытается получить доступ к БД, которая работает на другом docker container
+		НО выдаётся SQLSTATE[HY000] [2002] Operation timed out
+		подозреваю что дело в том как Symfony парсит dsn
+		потому что phpmyadmin работает на другом docker container и прекрасно читает БД
+Оптимизировать готовый сайт
+	для каждой страницы определить <link rel="preload"> с использованием компонента https://symfony.com/doc/current/web_link.html
+		на каждую картинку, чтобы сайт считался более быстрым с точки зрения LCP https://symfony.com/bundles/ux-lazy-image/current/index.html#largest-contentful-paint-lcp-and-web-performance-considerations
+		$this->addLink($request, (new Link('preload', $publicImgFilename))->withAttribute('as', 'image'));
+		это будет + к поисковым запросам
+
+RRR?: (повторный просмотр) + WATCH ALL RAYAN WAVER VIDEOS
+RRR: READ БАНДА ЧЕТЫРЁХ
+RRR: SYMFONY DEMO посмотреть как реализованы лучшие подходы
+
+Реализуй с помощюь mercure + turbo stream смену title favicon для: (основываясь на turbo:<events>)
+	default favicon (/assets/images/favicon/favicon.svg)
+	чего-то нового (/assets/images/favicon/favicon_new.svg)
+	загрузки (иммитация загрузки анимацией svg, иммитация потому что turbo drive работает) (/assets/images/favicon/favicon_loading.svg)
+
+TODO
+	регайся https://packagist.org/
+	https://symfony.com/doc/current/bundles/best_practices.html
+	Все переводы бандлов поместить в домен grinway, то есть имя домена === имя бандла
+	Все bundles and extensions сделать бандлами extends AbstractBundle
+	https://symfony.com/doc/current/bundles/configuration.html#using-the-abstractbundle-class
+	привести в порядок документацию:
+		каждый bundle должен иметь docs/index.md
+			так что разбей документацию на секции
+			и сделай ссылки в README.md
+	Если по мере реализаций потребуется оптимизировать выполнение метода
+		(может выполнится или может никогда не выполнится (из созданного объекта
+		вместо его создания через new MyClass()
+		VarExporter/createLazyGhost(func)
+		тем, самым даже конструктор не вызовится, а объект будет
+		func вызовется когда произойдёт доступ к любому свойству
+	
+	Ещё разок перед созданием своих бандлов: https://symfony.com/doc/current/bundles/best_practices.html
+	
+	take clear bundle realization from: https://github.com/symfony/ux/tree/2.x/src/Typed/src
+	
+	git pull --tags
+	git checkout before-pure-docker
+	
+	https://github.com/endroid/installer#configuration
+	WebApp
+		Add Yaml::PARSE_CONSTANT to allow !const 'GrinWay\WebApp\Type\Messenger\BusTypes::QUERY_BUS' into web-app-bundle\config\services.yaml
+		Создать Stimulus controllers (короче сделать этот пакет UX)
+			https://symfony.com/doc/current/frontend/create_ux_bundle.html
+			in dependencies "package.json": "@grinway/<>": "file:vendor/grinway/<>/assets",
+		Данные указаны по умолчанию
+			переданное пользователем merge с дефолтным
+				leaveOn
+				enterOn
+			{{ stimulus_controller('animate', {
+				style: 'fade',
+				targetActiveClass: 'active',
+				enterAfterLeave: true,
+				
+				leaveOn: ['turbo:before-fetch-request', 'turbo:before-frame-render', 'turbo:before-render'],
+				{# OR
+				enterOn: [''],
+				#}
+			})
+			Сниппет реализации
+			async f(event) {
+				if has method (event.detail.resume)
+				event.preventDefault()
+				await this.leave()
+				if has method (event.detail.resume)
+				event.detail.resume()
+				requestAnimationFrame(() => {
+					this.enter()
+				})
+			}
+			
+		themes
+			./templates\form\theme\custom.html.twig
+				class="immutable" & TextType -> displays immutably
+		$get
+			for QueryHandlerInterface ->addTag('messenger.message_handler', ['bus' => BusTypes::QUERY_BUS])
+		-	CommandBusHandlerInterface
+			EventBusHandlerInterface
+			QueryBusHandlerInterface
+		$errorFormat('message %s', 'param') $newUserFormat('message %s', 'param')
+			GrinWay\WebApp\Contract\MessageFormat\*
+			GrinWay\WebApp\Type\MessageFormat\*
+			GrinWay\WebApp\MessageFormat\*
+			GrinWay\WebApp\Configurator\MessageFormatConfigurator.php'
+		add useful functoins into ExpressionLanguage
+		AbstractHandler must:
+			tag 'container.service_subscriber'
+			.\src\Messenger\AbstractHandler.php
+		twig extension
+			for_user
+		twig components (config/packages/twig_component.yaml)
+			take all grinway twig components
+		HasSyncTransportInterface -> MessageHasSyncTransportInterface
+		YearMonthDayHourMinuteSecondType
+			and create theme for it
+		cuz there is disabled option that to the same ?take: // TODO: PreventModifyingPropsOfEntity
+		//TODO: NormalizeLocaleDataTransformer add FormTypeExtension
+			+ написать тест для неё
+		//TODO: CarbonValueResolver separate now and nowModified logic (replace @var with @param)
+			+ написать тест для неё
+		//TODO: TAKE IT TO EnableAutoMapping
+		// TODO: RememberMeSignatureUserProvider
+		Вынести логику чтения _instanceof в отдельный Extension и описать что он есть в документации
+		// TODO: TranlationDomainFormTypeExtension (через конфиг default_translation_domain)
+		// TODO: LabelFormatFormTypeExtension (через конфиг default_label_format)
+		###> twig:grinway:email ###
+		Шаблон email сообщения, используемый в теме email message,
+		По задумке должен:
+			отображать различие от importance
+			красиво отображать exception
+			красиво отображать action_text, action_url
+			если true == markdown отображать content, footer_text с фильтром markdown_to_html
+			если true == raw отображать content, footer_text с фильтром raw
+		<twig:grinway:email
+			email_email=email
+			email_importance=importance
+			email_content=content
+			email_exception=exception
+			email_action_text=action_text
+			email_action_url=action_url
+			email_markdown=markdown
+			email_raw=raw
+			email_footer_text=footer_text
+		/>
+		###< twig:grinway:email ###
+		// TODO: GRINWAY:FLASH
+		// TODO: useTransition
+		// TODO: transition_controller
+		// TODO: before-cache-cleaner
+		// TODO: form-ignores-frame-on-success_controller.js
+		twig:grinway:trix
+		// TODO: bootstrap
+		<twig:grinway:grid-br br_up="md" /> -> <div class="w-100 d-none d-md-block"></div>
+		// TODO: html-inserter
+		stimulus_controller('grinway--html-inserter')
+			include in bundle
+			html: include('@WebAppBundle/svg/animate/_three_shapes.svg.twig'),
+		// TODO: grinway--dom-el
+		// TODO: animate-svg -> grinway--animate-svg
+		TODO: theme -> grinway--theme
+			Пока что данный компонент с js controller
+			способны устанавливать только 1 тему (<>, и светлую)
+			Задача: реализовать возможность применения одной темы из __списка__ тем (checkbox -> radio)
+			данные о всевозможных темах должны быть доступны как component так и js controller
+			так что просто перетащи данные с компонента в контроллер
+		// TODO: lazy-image -> grinway--lazy-image
+		реализовать свой grinway/video stimulus controller
+		
+		checkout main
+		если у бандла есть public resources реализуй сервис, который для asset() возвратит валидный путь
+			ресурсы будут перемещены в root после php bin/console assets:install
+		Zenstruck/Foundry: сделать WebTestExtensionTrait и использовать их в своём WebTestBrowser
+		// TODO: Telegram symfony twig component
+	GsEnvProcessor
+		fix abstractions (only with functions)
+		// TODO: HttpsToStringEnvVarProcessor
+		
+		checkout main
+		заменить _ на: Aware либо TraitAware либо *AwareTrait
+			EntityManager_
+			MessageBus_
+			CurrentUser_
+			PropertyAccessor_
+			Session_
+	Command
+		убрать из конструктора все symfony зависимости (добавить их через #[Required])
+		добавить аргумент ioDump(startFromPrevLine: false)
+			$cursor->moveUp(2 /* how to know that ?! maybe that's an argument */);
+			$cursor->clearLine();
+			$this->io->text('<CLIENT_TEXT_IS_HERE>');
+			if (?) $cursor->moveDown(1);
+		добавить аргумент ioDump(startFromTop: false)
+			$cursor->restorePosition();
+			$cursor->clearOutput();
+		monolog.logger.grin_way_command.dev_logger -> monolog.logger.grin_way_command.dev
+		public function initialize -> protected function initialize
+		deploy command (bundles, doctrine, dotenv:dump`composer dump-env prod`)
+		избавиться от ENV переменных
+		добавить новых функций в expression_language
+		создать одну комманду "bin/use <absPath>" (для вставки всех недостающих use для переданного абсолютного пути файла)
+			Если вариантов несколько, отобрази список для выбора
+			1) на модификацию файла (и отображения, того что вставил)
+			передать:
+				1.1) данные из буффера обмена (путь к файлу)
+				путь к vendor сконструируй из переданного пути
+			по имени класса, трейтаTrait, интерфейсаInterface если с большой буквы
+			по имени метода если с маленькой
+		// TODO: ErrorEventListener
+		
+		checkout main
+		// TODO: TelegramSetWebhook
+		// TODO: TelegramAmountWithEndFigures
+		// TODO: realize (CurrencyService)
+		// TODO: FiguresRepresentation
+		// TODO: JS ThemeManager
+		// TODO: Telegram Exceptions
+		// TODO: JS TypeChecker
+	Services
+		для serviceLocator ServiceMethodsSubscriberTrait отложенная автопроводка .\src\Trait\ServiceLocator\Aware
+		позаимствовать App\CompillerPass\AbstractCompillerPass
+		позаимствовать //TODO (NewClosureDefinitionWithTagPass)
+		OptionsResolverUtils::getCheckedKeysDefaultsValues($className, $passedValues, $nestedNodeName, $nestedNodeDefaults)
+			./src\Form\Type\TaskFormType::setNormalizer
+		take //TODO : NoteType
+		?реализовать PasswordConstraint extends Compound только regex должен поциферно и побуквенно включать \sprintf('(?=.*[%1$s](?=.*[%1$s]))(?=.*[%2$s](?=.*[%2$s](?=.*[%2$s])))[%1$s%2$s%3$s]+', $regexLetters, $regexNumbers, $regexSpecialChars)
+		//TODO: ExpressionLanguageStaticFunctions
+		// TODO: AllTypes
+		//TODO: FragmentUtils
+		//TODO: take isEnabledLocale
+		//TODO: AccessService (Философия такая, что Symfony говорит всегда выкидывай AccessDeniedException и не выбрасывай AuthenticationException вручную(оно перевыброситься если ты ещё не авторизован), так как логика попадания в EntryPoint уже описана)
+		// TODO: IpRangeRequestMatcher
+		//TODO: TestUtil (не совсем уверен что именно в этот пакет, TestUtil -> CrawlerUtil)
+		//TODO: TwigUtil
+		//trait SessionAwareTrait + write test when service uses this method with (pass request is needless) and without autowiring (need to pass request or throw)
+		>IN ONE NAMESPACE
+		//TODO: ClockImmutable
+		//TODO: OTPUtil
+		//TODO: OTPStrategyInterface
+		//TODO: AbstractOtpStrategy
+		//TODO: HOTPStrategy
+		//TODO: TOTPStrategy
+		<IN ONE NAMESPACE
+		//TODO: MimeUtil
+		//TODO: DefaultRateLimiterStorage
+		//TODO: CacheUtil (придумать нормальный интерфейс)
+		// TODO: EntityInterface
+		Реализовать env processor grin_way_csv_decode для декодирования csv в массив
+			(использовать serializer.encoder.csv service)
+		//TODO: attributesAsArray
+		https://symfony.com/bundles/ZenstruckFoundryBundle/current/index.html#faker
+		
+		checkout main
+		
+		// TODO: MySqlUtils to backup and restore
+		// TODO: Telegram
+		// TODO: AbsolutePath
+		// TODO: TagServiceLocatorsPass
+	Extensions
+		может перейти от OptionsResolver к Processor+TreeBuilder в global instance of
+		
+		checkout main
+	film
+		remove .exe from repository
+			$ffmpegAbsPath = (new ExecutableFinder())->find('ffmpeg', null, [$dopBasePath]);
+			if null === $ffmpegAbsPath скачать ffmpeg в $dopBasePath
+			if null !== $ffmpegAbsPath не скачивать ffmpeg
+			в любом случае в конце красным сделать дамп абсолютного пути где распологается ffmpeg (чтобы пользователь сам смог его заменить)
+				так как ExecutableFinder со своим приоритетом может выбрать ffmpeg не из $dopBasePath
+		вместо \exec() от PHP использовать компонент Process, Process::fromShellCommandLine(command: '<>', cwd: $this->projectDir)
+	bundles directory -> packages
+	
+	Создай рецепты для бандлов
+		https://symfony.com/doc/current/setup/flex_private_recipes.html
+	
+Переключиться на prod и понять почему 500 ошибка
+Придумать ситуацию, в которой ты будешь использовать kernel.fragment_renderer
+	https://symfony.com/doc/current/reference/dic_tags.html#kernel-fragment-renderer
+SYMFONY COMPONENTS: https://symfony.com/components
+
+###> probably somewhen
+SYMFONY MULTIPLE KERNELS in a single symfony application
+	https://symfony.com/doc/current/configuration/multiple_kernels.html
+PHP FRANKEN
+	https://dunglas.dev/2022/10/frankenphp-the-modern-php-app-server-written-in-go/
+https://symfony.com/doc/current/reference/index.html
+SYMFONY TRANSLATION
+	https://localise.biz/about
+	https://symfony.com/doc/current/translation.html#installing-and-configuring-a-third-party-provider
+
+	phrase https://phrase.com/
+		bundle for it https://github.com/wickedOne/phrase-tag-bundle
+BLACKFIRE
+	https://docs.blackfire.io/introduction
+RECTOR
+	detect Symfony deprications https://getrector.com/documentation/
+https://github.com/search?q=topic%3Asymfony-bundle&type=repositories
+https://symfony.com/doc/current/create_framework/index.html
+Framework Configuration Reference https://symfony.com/doc/current/reference/configuration/framework.html#reference-cache-prefix-seed

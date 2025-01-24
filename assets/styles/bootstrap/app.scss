@@ -1,0 +1,11 @@
+$utilities: map-merge($utilities, (
+        "min-viewport-height": map-merge(map-get($utilities, 'min-viewport-height'), (
+                values: map-merge(map-get(map-get($utilities, 'min-viewport-height'), 'values'), (
+                        25: 25vh,
+                        50: 50vh,
+                ))
+        )),
+        "overflow": map-merge(map-get($utilities, 'overflow'), (
+                values: append(map-get(map-get($utilities, 'overflow'), 'values'), clip),
+        )),
+));

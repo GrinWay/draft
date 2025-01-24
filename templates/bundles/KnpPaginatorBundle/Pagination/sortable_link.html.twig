@@ -1,0 +1,33 @@
+{# {% extends '@!KnpPaginator/Pagination/bootstrap_v5_bi_sortable_link.html.twig' %} #}
+
+<a{% for attr, value in options %} {{ attr }}="{{ value }}"{% endfor %}>
+<span class="float-end">
+        {% if sorted %}
+            {% if 'desc' == direction|u.lower %}
+                {% if options.app_not_include_icon|default(null) %}
+                {% else %}
+                    {{ ux_icon('ph:caret-up-duotone', {
+                        width: '1rem',
+                    }) }}
+                {% endif %}
+            {% else %}
+                {% if options.app_not_include_icon|default(null) %}
+                {% else %}
+                    {{ ux_icon('ph:caret-down-duotone', {
+                        width: '1rem',
+                    }) }}
+                {% endif %}
+            {% endif %}
+        {% else %}
+            {% if options.app_not_include_icon|default(null) %}
+            {% else %}
+                {{ ux_icon('ph:minus-light', {
+                    width: '1rem',
+                }) }}
+            {% endif %}
+        {% endif %}
+    </span>
+{{ title }}
+</a>
+
+{# {{ dump() }} #}

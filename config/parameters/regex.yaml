@@ -1,0 +1,3 @@
+parameters:
+    app.regex.number: '[0-9]+'
+    app.regex.number.strict: '^%app.regex.number%$'

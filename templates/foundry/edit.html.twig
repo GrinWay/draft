@@ -1,0 +1,13 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Edit Foundry{% endblock %}
+
+{% block body %}
+    <h1>Edit Foundry</h1>
+
+    {{ include('foundry/_form.html.twig', {'button_label': 'Update'}) }}
+
+    <a href="{{ path('app_foundry_index') }}">back to list</a>
+
+    {{ include('foundry/_delete_form.html.twig') }}
+{% endblock %}

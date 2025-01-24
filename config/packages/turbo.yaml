@@ -1,0 +1,11 @@
+turbo:
+    broadcast:
+        enabled: true
+        entity_template_prefixes:
+            # Default:
+            App\Entity\: broadcast/
+
+        # Enable the Doctrine ORM integration
+        doctrine_orm:
+            enabled: true
+    default_transport: default

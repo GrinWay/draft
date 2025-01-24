@@ -1,0 +1,26 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Track me{% endblock %}
+
+{% block body %}
+    <div class="row">
+        <div class=""
+                {{ stimulus_controller('track-me') }}
+        >
+            <div class="col">
+                <div class="">
+                    <button
+                            type="button"
+                            class="btn btn-sm btn-primary"
+                            data-action="click->track-me#start"
+                    >Track me</button>
+                    <button
+                            type="button"
+                            class="btn btn-sm btn-secondary"
+                            data-action="click->track-me#stop"
+                    >Stop tracking</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

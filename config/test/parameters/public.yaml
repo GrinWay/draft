@@ -1,0 +1,2 @@
+parameters:
+    app.url: '%env(resolve:APP_URL)%'

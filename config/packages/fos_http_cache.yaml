@@ -1,0 +1,40 @@
+fos_http_cache:
+
+    flash_message:
+        enabled: true
+
+    proxy_client:
+        default: varnish
+        varnish:
+#            tags_header: My-Cache-Tags
+#            tag_mode: ban
+#            header_length: 1234
+#            default_ban_headers:
+#                Foo: Bar
+            http:
+                # List of proxy-servers
+                servers:
+                - '127.0.0.1:8100'
+                # Application URI
+#                base_url: '%env(resolve:APP_URL)%'
+                base_url: '%env(APP_HOST)%'
+
+    user_context:
+        role_provider: true
+        enabled: true
+
+    tags:
+        enabled: true
+
+    cache_control:
+        defaults:
+            overwrite: true
+
+#        rules:
+#        -   match:
+#                host: '^.+$'
+#            headers:
+#                cache_control:
+#                    public: true
+#                    max_age: 1000
+#                    s_maxage: 1000

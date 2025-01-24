@@ -1,0 +1,89 @@
+services:
+    _defaults:
+        autowire: ture
+        autoconfigure: true
+
+    App\Controller\TelegramController:
+        class: App\Controller\TelegramController
+        arguments:
+            $updateHandlersServiceLocator: !tagged_locator
+                tag: 'grinway.telegram_handler'
+                default_index_method: 'updateField'
+
+    #
+    # TAG NAME PATTERN: grinway.telegram_<AbstractUpdateHandler::updateField()>_handlers
+    #
+    # With this approach we guarantee that TopicHandlerInterface::supports()
+    # will be called in the most particular case first
+    #
+    ###> MESSAGE TAG ###
+    App\Telegram\Update\Handler\ReplyToMessage\:
+        resource: '../../src/Telegram/Update/Handler/ReplyToMessage/'
+        tags:
+        -   name: 'grinway.telegram_message_handlers'
+            priority: 6
+
+    App\Telegram\Update\Handler\PriorityAble\Payment\:
+        resource: '../../src/Telegram/Update/Handler/PriorityAble/Payment/'
+        tags:
+        -   name: 'grinway.telegram_message_handlers'
+            priority: 5
+
+    App\Telegram\Update\Handler\PriorityAble\Command\Message\:
+        resource: '../../src/Telegram/Update/Handler/PriorityAble/Command/Message/'
+        tags:
+        -   name: 'grinway.telegram_message_handlers'
+            priority: 4
+
+    App\Telegram\Update\Handler\PriorityAble\Command\Message\LowPriority\:
+        resource: '../../src/Telegram/Update/Handler/PriorityAble/Command/Message/LowPriority/'
+        tags:
+        -   name: 'grinway.telegram_message_handlers'
+            priority: 3
+
+    # Private chat first, only then group
+    App\Telegram\Update\Handler\PriorityAble\PrivateChat\Message\:
+        resource: '../../src/Telegram/Update/Handler/PriorityAble/PrivateChat/Message/'
+        tags:
+        -   name: 'grinway.telegram_message_handlers'
+            priority: 2
+
+    App\Telegram\Update\Handler\PriorityAble\Group\Message\:
+        resource: '../../src/Telegram/Update/Handler/PriorityAble/Group/Message/'
+        tags:
+        -   name: 'grinway.telegram_message_handlers'
+            priority: 1
+
+    App\Telegram\Update\Handler\Message\:
+        resource: '../../src/Telegram/Update/Handler/Message/'
+        tags:
+        -   name: 'grinway.telegram_message_handlers'
+            priority: 0
+    ###< MESSAGE TAG ###
+
+    ###> CALLBACK QUERY TAG ###
+    App\Telegram\Update\Handler\CallbackQuery\:
+        resource: '../../src/Telegram/Update/Handler/CallbackQuery/'
+        tags:
+        -   name: 'grinway.telegram_callback_query_handlers'
+    ###< CALLBACK QUERY TAG ###
+
+    ###> INLINE QUERY TAG ###
+    App\Telegram\Update\Handler\InlineQuery\:
+        resource: '../../src/Telegram/Update/Handler/InlineQuery/'
+        tags:
+        -   name: 'grinway.telegram_inline_query_handlers'
+    ###< INLINE QUERY TAG ###
+
+    ###> PAYMENTS ###
+    App\Telegram\Update\Handler\Payment\ShippingQuery\:
+        resource: '../../src/Telegram/Update/Handler/Payment/ShippingQuery/'
+        tags:
+        -   name: 'grinway.telegram_shipping_query_handlers'
+
+    App\Telegram\Update\Handler\Payment\PreCheckoutQuery\:
+        resource: '../../src/Telegram/Update/Handler/Payment/PreCheckoutQuery/'
+        tags:
+        -   name: 'grinway.telegram_pre_checkout_query_handlers'
+    ###< PAYMENTS ###
+    #...

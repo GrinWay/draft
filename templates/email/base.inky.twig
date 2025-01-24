@@ -1,0 +1,21 @@
+{% apply inky_to_html %}
+    <container>
+        <row>
+            {% block header %}
+                DEFAULT HEADER
+            {% endblock %}
+        </row>
+
+        <row>
+            {% block body %}
+                DEFAULT BODY
+            {% endblock %}
+        </row>
+
+        <row>
+            {% block footer %}
+                DEFAULT FOOTER
+            {% endblock %}
+        </row>
+    </container>
+{% endapply %}

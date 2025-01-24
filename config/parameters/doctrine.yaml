@@ -1,0 +1,6 @@
+parameters:
+    app.database.backup_abs_path: '%kernel.project_dir%/var/backups/database'
+
+    app.default_db_host_ip: '%env(APP_DB_HOST_IP)%'
+    app.default_db_port_with_dots: '%env(APP_DB_PORT_WITH_DOTS)%'
+    env(APP_DATABASE_URL): "mysql://%env(APP_DB_USER)%:%env(APP_DB_PASS)%@%env(default:app.default_db_host_ip:GLOBAL_DB_HOST_IP)%%env(default:app.default_db_port_with_dots:GLOBAL_DB_PORT_WITH_DOTS)%/%env(APP_DB_NAME)%?charset=utf8mb4%env(default::APP_DB_DOP_QUERY_PARAMS)%"

@@ -1,0 +1,5 @@
+framework:
+    workflows:
+#        enabled: true
+#        telegram_callback_query:
+#            type: state_machine

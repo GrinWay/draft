@@ -1,0 +1,63 @@
+framework:
+    http_client:
+        scoped_clients:
+            this.client:
+                base_uri: '%env(resolve:APP_URL)%'
+
+#            $this->githubApiClient->request('POST', '/repos/{gh_api_owner}/{gh_api_repo}/dispatches', [
+#                'json' => [
+#                    'event_type' => 'webhook',
+#                ],
+#            ]);
+            github.api.client:
+#                scope: 'https://api\.github\.com'
+                base_uri: 'https://api.github.com'
+                headers:
+                    Authorization: 'token %env(APP_GITHUB_API_AUTH_TOKEN)%'
+                    Accept: 'application/vnd.github+json'
+
+            telegram.client:
+                base_uri: 'https://api.telegram.org/bot%env(APP_TELEGRAM_TOKEN)%/'
+                headers:
+                    Content-Type: 'application/json'
+
+            telegram.file.client:
+                base_uri: 'https://api.telegram.org/file/bot%env(APP_TELEGRAM_TOKEN)%/'
+                headers:
+                    Content-Type: 'application/json'
+
+            test.headers.client:
+                base_uri: 'https://github.com/'
+                headers:
+                    Content-Type: 'test/test'
+
+        default_options:
+            #            rate_limiter: 'http_example_limiter'
+            http_version: '2.0'
+            vars:
+                secret: '%env(resolve:APP_SECRET)%'
+                gh_api_owner: '%env(APP_GITHUB_API_REPO_OWNER)%'
+                gh_api_repo: '%env(APP_GITHUB_API_REPO)%'
+            extra:
+                trace_content: false
+            timeout: 5
+            retry_failed:
+                max_retries: 2
+            verify_peer: false
+            max_redirects: 7
+
+when@test: &when_test
+    framework:
+        http_client:
+            scoped_clients:
+                telegram.client:
+#                    base_uri: 'https://api.telegram.org/bot%env(APP_TEST_TELEGRAM_TOKEN)%/test/'
+                    base_uri: 'https://api.telegram.org/bot%env(APP_TEST_TELEGRAM_TOKEN)%/'
+                    headers:
+                        Content-Type: 'application/json'
+
+when@prod: &when_prod
+    framework:
+        http_client:
+            default_options:
+                verify_peer: true

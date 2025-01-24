@@ -1,0 +1,9 @@
+body[data-app-theme="light"] {
+  --app-theme-bg-color: #fdfdfd;
+  --app-theme-color: #222222;
+}
+
+body[data-app-theme="dark"] {
+  --app-theme-bg-color: #17212b;
+  --app-theme-color: #fdfdfd;
+}

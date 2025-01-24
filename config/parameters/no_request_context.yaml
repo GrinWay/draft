@@ -1,0 +1,7 @@
+parameters:
+#    asset.request_context.base_path: '/'
+    asset.request_context.secure: '%env(resolve:APP_PROTOCOL)%'
+
+    router.request_context.host: '%env(APP_HOST)%'
+    router.request_context.scheme: '%env(resolve:APP_PROTOCOL)%'
+    router.request_context.base_url: '%env(resolve:APP_URL)%'

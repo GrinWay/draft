@@ -1,0 +1,32 @@
+services:
+
+    _instanceof:
+        App\Telegram\Contract\UpdateHandlerInterface:
+            tags:
+            -   name: 'grinway.telegram_handler'
+
+    _defaults:
+        autoconfigure: true
+        autowire: true
+        bind:
+            ###> EMAIL ###
+            $appTestEmail: '%env(APP_TEST_EMAIL)%'
+            ###< EMAIL ###
+
+            ###> PATH ###
+            $projectDir: '%kernel.project_dir%'
+            $publicImgDir: 'media/images'
+            $absGeoJsonDir: '%kernel.project_dir%/public/client/geojson'
+            ###< PATH ###
+
+    # APP
+    App\:
+        resource: '../src/'
+        exclude:
+        - '../src/DependencyInjection/'
+        - '../src/Entity/'
+        - '../src/Kernel.php'
+#        - '../src/Messenger/Command/*/Handler/'
+#        - '../src/Messenger/Event/PriorityHigh/*/Handler/'
+#        - '../src/Messenger/Event/PriorityMiddle/*/Handler/'
+#        - '../src/Messenger/Event/PriorityLow/*/Handler/'

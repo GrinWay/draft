@@ -1,0 +1,94 @@
+proxy:
+    domains:
+    - 'app'
+
+http:
+    no_tls: true # todo: when changed also change "--server-type"
+    ###> Uncomment when no_tls: false
+    #p12: 'C:/Users/son5-/.symfony5/certs/default.p12'
+    ###< Uncomment when no_tls: false
+#    document_root: 'public/' # Always
+#    passthru: 'index.php' # Always
+    daemon: false # Always
+    no_workers: false # Always
+    #allow_http: true # Prevent auto-redirection from HTTP to HTTPS
+#    use_gzip: true
+
+workers:
+
+#    proxy:
+#        cmd:
+#        - symfony
+#        - 'proxy:start'
+
+    ###> 'webpack_dev_server' OR 'yarn_encore_dev_watch' ###
+    # todo: https://symfony.com/doc/5.x/frontend/encore/dev-server.html#enabling-https-using-the-symfony-web-server
+    # adds HMR (Hot Module Replacement)
+    ### IMPORTANT: Can't work with" Encore.enableVersioning(true)
+#    webpack_dev_server:
+#        cmd:
+#        - yarn
+#        - encore
+#        - 'dev-server'
+#        - '--port'
+#        - '8081'
+#        - '--client-logging'
+#        - error
+#        - '--hot'
+#        - only
+#        - '--watch-files'
+#        - 'src/**/*.php'
+#        - '--watch-files'
+#        - 'templates/**/*'
+#        - '--watch-files'
+#        - 'assets/controllers.json'
+#        ###> todo '--server-type' ###
+#        #
+#        # symfony server:start --no-tls   => 'http' (and use ngrok to provide an 'https' tunnel)
+#        # symfony server:start            => 'https'
+#        - '--server-type'
+#        - http
+#        #
+#        ###< todo '--server-type' ###
+#
+#        ###> Symfony: generate ssl files "symfony server:ca:install" ###
+#        #
+#        - '--server-options-pfx'
+#        - 'C:/Users/son5-/.symfony5/certs/default.p12'
+#        #
+#        ###< Symfony: generate ssl files "symfony server:ca:install" ###
+#        - '--live-reload'
+#        - '--no-client-overlay'
+#        - '--client-reconnect'
+    yarn_encore_dev_watch:
+        cmd:
+        - yarn
+        - encore
+        - dev
+        - '--watch'
+    ###< 'webpack_dev_server' OR 'yarn_encore_dev_watch' ###
+
+    # ON
+#    messenger_consume_all:
+#        cmd:
+#        - php
+#        - 'bin/console'
+#        - 'messenger:consume'
+#        - '--all'
+#        - '--memory-limit=128M'
+#        - '-q'
+#        watch:
+#        - config
+#        - src
+#        - templates
+#        - vendor
+
+    #    mercure:
+    #        cmd:
+    #        - './mercure/windows/mercure.exe'
+    #        - 'run'
+    #        - '--config'
+    #        - './mercure/windows/dev.Caddyfile'
+
+    # auto start Docker compose when starting server (available since Symfony CLI 5.7.0)
+    docker_compose: ~

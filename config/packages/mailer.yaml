@@ -1,0 +1,33 @@
+framework:
+    mailer:
+#        message_bus: default #command.bus
+
+        dsn: '%env(APP_MAILER_DSN)%'
+
+        envelope:
+            sender: '%env(APP_MAILER_HEADER_FROM)%'
+            recipients:
+            -   '%env(APP_ADMIN_EMAIL)%'
+            allowed_recipients:
+            -   '^.+$'
+
+        headers:
+            From: '%env(APP_MAILER_HEADER_FROM)%'
+            To: '%env(APP_ADMIN_EMAIL)%'
+            Subject: '%env(APP_MAILER_HEADER_SUBJECT)%'
+
+when@test: &when_test
+    framework:
+        mailer:
+            dsn: 'null://null'
+
+            envelope:
+                sender: '%env(APP_MAILER_HEADER_FROM)%'
+                recipients:
+                -   '%env(APP_ADMIN_EMAIL)%'
+                allowed_recipients: []
+
+            headers:
+                From: '[TEST]%env(APP_MAILER_HEADER_FROM)%'
+                To: '%env(APP_ADMIN_EMAIL)%'
+                Subject: '[TEST]%env(APP_MAILER_HEADER_SUBJECT)%'

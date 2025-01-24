@@ -1,0 +1,17 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+    <div class="display-1">Overall <div class="mark d-inline mb-1">files</div> and dirs: {{ pagination.totalItemCount }}</div>
+
+    {% for item in pagination %}
+        <div class="mb-1">
+            {% if item.isFile %}
+                <div class="mark">{{ item.getRelativePathname }}</div>
+            {% else %}
+                <div class="">{{ item.getRelativePathname }}</div>
+            {% endif %}
+        </div>
+    {% endfor %}
+
+    <div class="display-4">{{ knp_pagination_render(pagination) }}</div>
+{% endblock %}

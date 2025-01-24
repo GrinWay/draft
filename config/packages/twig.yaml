@@ -1,0 +1,11 @@
+twig:
+    strict_variables: false
+    file_name_pattern: '*.twig'
+    globals:
+        app_text_logo: '%env(APP_TEXT_LOGO)%'
+        app_url: '%env(resolve:APP_URL)%'
+        symfony_version: !php/const Symfony\Component\HttpKernel\Kernel::VERSION
+
+when@test:
+    twig:
+        strict_variables: true

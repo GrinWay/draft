@@ -1,0 +1,57 @@
+name: Github actions
+
+on:
+  repository_dispatch:
+    types:
+    - webhook
+  workflow_dispatch: ~
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download the repo
+      uses: "actions/checkout@v4"
+
+    - name: Cache the php
+      uses: "actions/cache@v4"
+      with:
+        path: src/Kernel.php
+        key: "${{ runner.os }}-php"
+
+    - name: Install PHP with extensions
+      uses: "shivammathur/setup-php@2.26.0"
+      with:
+        coverage: "none"
+        php-version: "8.4"
+        tools: "composer:v2"
+
+    - name: Check the composer.json hash
+      run: "echo \"${{ hashFiles('composer.json') }}\""
+
+    - name: Cache the composer
+      uses: actions/cache@v4
+      with:
+        path: composer.json
+        key: "${{ runner.os }}-composer-${{ hashFiles('composer.json') }}"
+
+    - name: Composer install
+      uses: "ramsey/composer-install@2.2.0"
+      with:
+        composer-options: "--prefer-dist --no-ansi --no-progress"
+
+    - name: Run composer audit
+      uses: "alamirault/composer-audit-action@v1"
+
+    - name: Check the packages.json hash
+      run: "echo \"${{ hashFiles('packages.json') }}\""
+
+    - name: Cache the npm
+      uses: actions/cache@v4
+      with:
+        path: packages.json
+        key: "${{ runner.os }}-npm-${{ hashFiles('packages.json') }}"
+
+    - name: Npm install
+      run: "npm ci"

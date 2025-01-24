@@ -1,0 +1,9 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Hello DynamicController!{% endblock %}
+
+{% block body %}
+    <div class="">DYNAMIC CONTROLLER IN ACTION</div>
+    {{ dump(content|default(null)) }}
+    {{ dump(path('dynamic_route_name_1')) }}
+{% endblock %}

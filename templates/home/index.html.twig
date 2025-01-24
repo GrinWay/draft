@@ -1,0 +1,17 @@
+{% extends 'base.html.twig' %}
+
+{% set pagination_exists = pagination|default(false) %}
+
+{% block head_inner %}
+    {% if pagination_exists %}
+        {{ knp_pagination_rel_links(pagination) }}
+    {% endif %}
+{% endblock %}
+
+{% block title %}Home{% endblock %}
+
+{% block body %}
+
+    <div class="">Was content changed?</div>
+
+{% endblock %}

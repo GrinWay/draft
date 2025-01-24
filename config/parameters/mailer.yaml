@@ -1,0 +1,15 @@
+parameters:
+    # FAILURE: DMARC reason
+    env(APP_MAILER_HEADER_FROM): '[Admin] %env(APP_MAILER_HEADER_TITLE)% <%env(APP_ADMIN_EMAIL)%>'
+
+    # That's here cuz it's a dynamic env, admin can change it
+    env(APP_MAILER_HEADER_SUBJECT): 'Default subject'
+
+    env(APP_MAILER_DEFAULT_TRANSPORT): 'smtp://%env(APP_ADMIN_MAILER_LOGIN)%:%env(APP_ADMIN_MAILER_PASS)%@smtp.woodenalex.ru:25?verify_peer=0&local_domain=woodenalex.ru&restart_threshold=10&restart_threshold_sleep=1&max_per_second=2&auto_tls=false'
+    env(APP_MAILER_MAILGUN_TRANSPORT): 'mailgun+api://%env(APP_MAILER_MAILGUN_TRANSPORT_API_KEY)%:%env(APP_MAILER_MAILGUN_TRANSPORT_DOMAIN)%@default'
+
+    env(APP_MAILER_DSN): '%env(APP_MAILER_MAILGUN_TRANSPORT)%'
+
+when@prod:
+    parameters:
+        env(APP_MAILER_DSN): 'failover(%env(APP_MAILER_MAILGUN_TRANSPORT)% %env(APP_MAILER_DEFAULT_TRANSPORT)%)'

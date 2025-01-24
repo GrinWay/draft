@@ -1,0 +1,11 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}New Foundry{% endblock %}
+
+{% block body %}
+    <h1>Create new Foundry</h1>
+
+    {{ include('foundry/_form.html.twig') }}
+
+    <a href="{{ path('app_foundry_index') }}">back to list</a>
+{% endblock %}

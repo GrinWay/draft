@@ -1,0 +1,111 @@
+networks:
+    default:
+        name: app
+        driver: bridge
+
+services:
+
+    #    memcached:
+    #        image: memcached:alpine3.21
+    #        image: memcached
+    #        container_name: memcached_container
+    #        restart: unless-stopped
+    #        command:
+    #        - '--conn-limit=1024'
+    #        - '--memory-limit=64'
+    #        - '--threads=4'
+    #        ports:
+    #        - '11211:11211'
+
+    #    redis:
+    #        image: redis:latest
+    #        container_name: redis_container
+    #        restart: unless-stopped
+    #        ports:
+    #        - '6379:6379'
+
+    # docker rm app && docker rmi drafts-app && docker compose up
+    # for testing, including E2E
+#    varnish:
+#        image: varnish:7.6.1-alpine
+#        container_name: varnish
+#        restart: always
+#        ports:
+#        - '8100:80'
+#        environment:
+#            VARNISH_BACKEND_HOST: '127.0.0.1'
+#            VARNISH_BACKEND_PORT: '2025'
+#            VARNISH_SIZE: '2G'
+#        volumes:
+#        - './varnish/config:/etc/varnish/config'
+#        - './varnish/config/default_3.vcl:/etc/varnish/default.vcl:ro'
+
+#    app:
+#        depends_on:
+#        - varnish
+#        build: .
+#        container_name: draft_app
+#        restart: 'unless-stopped'
+#        ports:
+#        - '2025:80'
+    #        environment:
+    #            KERNEL_CLASS: '$KERNEL_CLASS'
+    #            APP_ADMIN_EMAIL: '$APP_ADMIN_EMAIL'
+    #            APP_ADMIN_MAILER_LOGIN: '$APP_ADMIN_MAILER_LOGIN'
+    #            APP_ADMIN_MAILER_PASS: '$APP_ADMIN_MAILER_PASS'
+    #            APP_DB_DOP_QUERY_PARAMS: '$APP_DB_DOP_QUERY_PARAMS'
+    #            APP_DB_HOST_IP: '$APP_DB_HOST_IP'
+    #            APP_DB_NAME: '$APP_DB_NAME'
+    #            APP_DB_PASS: '$APP_DB_PASS'
+    #            APP_DB_USER: '$APP_DB_USER'
+    #            APP_GITHUB_API_AUTH_TOKEN: '$APP_GITHUB_API_AUTH_TOKEN'
+    #            APP_GITHUB_API_REPO: '$APP_GITHUB_API_REPO'
+    #            APP_GITHUB_API_REPO_OWNER: '$APP_GITHUB_API_REPO_OWNER'
+    #            APP_MAILER_MAILGUN_TRANSPORT_API_KEY: '$APP_MAILER_MAILGUN_TRANSPORT_API_KEY'
+    #            APP_MAILER_MAILGUN_TRANSPORT_DOMAIN: '$APP_MAILER_MAILGUN_TRANSPORT_DOMAIN'
+    #            APP_TEST_EMAIL: '$APP_TEST_EMAIL'
+    #            MERCURE_JWT_SECRET: '$MERCURE_JWT_SECRET'
+
+    ###>
+    # docker exec -it app_pure_db mysql -p
+    #     CREATE DATABASE <>;
+    ###<
+    database:
+        image: 'mysql:8.0-debian'
+        restart: always
+        container_name: drafts_db
+        ports:
+        - '3306:3306'
+        environment:
+            MYSQL_ROOT_PASSWORD: 'root'
+
+    ###> symfony/mercure-bundle ###
+    mercure:
+        image: dunglas/mercure
+        restart: unless-stopped
+        container_name: mercure_container
+        environment:
+            # Uncomment the following line to disable HTTPS,
+            SERVER_NAME: ':80'
+            MERCURE_PUBLISHER_JWT_KEY: '$MERCURE_PUBLISHER_JWT_KEY'
+            MERCURE_SUBSCRIBER_JWT_KEY: '$MERCURE_SUBSCRIBER_JWT_KEY'
+            # Set the URL of your Symfony project (without trailing slash!) as value of the cors_origins directive
+            MERCURE_EXTRA_DIRECTIVES: |
+                cors_origins http://127.0.0.1:8000
+        # Comment the following line to disable the development mode
+        command: /usr/bin/caddy run --config /etc/caddy/dev.Caddyfile
+        #        healthcheck:
+        #            test: [ "CMD", "curl", "-f", "https://localhost/healthz" ]
+        #            timeout: 5s
+        #            retries: 5
+        #            start_period: 60s
+        volumes:
+        - mercure_data:/data
+        - mercure_config:/config
+###< symfony/mercure-bundle ###
+
+volumes:
+    ###> symfony/mercure-bundle ###
+    mercure_data:
+    mercure_config:
+###< symfony/mercure-bundle ###

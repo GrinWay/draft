@@ -1,0 +1,12 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Sending...{% endblock %}
+
+{% block body %}
+    <div class="font-monospace fs-4 text-center row row-cols-1 align-items-center justify-content-center vh-100">
+        <div class="my-auto">
+            <div>Email был отправлен на почту: "{{ to_email|default('null') }}"</div>
+            <div>Header from: "{{ header_from|default('null') }}"</div>
+        </div>
+    </div>
+{% endblock %}

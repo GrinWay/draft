@@ -1,0 +1,11 @@
+test_parsedown: |
+    10^2^
+    10~2~
+
+telegram:
+    found: |
+        Для __{text}__
+        ```php
+        <?php
+        echo 'Hello pior';
+        ```

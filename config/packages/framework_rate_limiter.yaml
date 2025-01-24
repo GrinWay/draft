@@ -1,0 +1,9 @@
+framework:
+    rate_limiter:
+        enabled: true
+
+        limiters:
+            http_example_limiter:
+                policy: 'token_bucket'
+                limit: 1
+                rate: { interval: '2 seconds', amount: 1 }

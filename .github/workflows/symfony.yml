@@ -1,0 +1,110 @@
+name: Symfony tests and deploy
+
+on:
+  #repository_dispatch: ~
+  workflow_dispatch: ~
+  #push:
+  #  branches: [ "main" ]
+  
+  #pull_request:
+  #  branches: [ "main" ]
+
+env:
+  PHP_VERSION: 8.4
+  KERNEL_CLASS: "${{ secrets.KERNEL_CLASS }}"
+  APP_ADMIN_EMAIL: "${{ secrets.APP_ADMIN_EMAIL }}"
+  APP_ADMIN_MAILER_LOGIN: "${{ secrets.APP_ADMIN_MAILER_LOGIN }}"
+  APP_ADMIN_MAILER_PASS: "${{ secrets.APP_ADMIN_MAILER_PASS }}"
+  APP_DB_DOP_QUERY_PARAMS: "${{ secrets.APP_DB_DOP_QUERY_PARAMS }}"
+  APP_DB_HOST_IP: "${{ secrets.APP_DB_HOST_IP }}"
+  APP_DB_NAME: "${{ secrets.APP_DB_NAME }}"
+  APP_DB_PASS: "${{ secrets.APP_DB_PASS }}"
+  APP_DB_USER: "${{ secrets.APP_DB_USER }}"
+  APP_GITHUB_API_AUTH_TOKEN: "${{ secrets.APP_GITHUB_API_AUTH_TOKEN }}"
+  APP_GITHUB_API_REPO: "${{ secrets.APP_GITHUB_API_REPO }}"
+  APP_GITHUB_API_REPO_OWNER: "${{ secrets.APP_GITHUB_API_REPO_OWNER }}"
+  APP_MAILER_MAILGUN_TRANSPORT_API_KEY: "${{ secrets.APP_MAILER_MAILGUN_TRANSPORT_API_KEY }}"
+  APP_MAILER_MAILGUN_TRANSPORT_DOMAIN: "${{ secrets.APP_MAILER_MAILGUN_TRANSPORT_DOMAIN }}"
+  APP_TEST_EMAIL: "${{ secrets.APP_TEST_EMAIL }}"
+  MERCURE_JWT_SECRET: "${{ secrets.MERCURE_JWT_SECRET }}"
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    #- name: Cache php
+    #  uses: 'actions/cache@v3'
+    #  with:
+    #    path: '/etc/php/'
+    #    key: "${{ runner.os }}-php-${{ env.PHP_VERSION }}-${{ hashFiles('/etc/php/**') }}"
+    #    restore-keys: |
+    #      ${{ runner.os }}-php-${{ env.PHP_VERSION }}
+    
+    - name: PHP installation
+      id: php-installation
+      uses: 'shivammathur/setup-php@2cb9b829437ee246e9b3cac53555a39208ca6d28'
+      with:
+        php-version: "${{ env.PHP_VERSION }}"
+
+    #- name: Dump php ini
+    #  run: php --ini
+
+    #- name: Dump php installation output
+    #  run: "echo \"${{ toJSON(steps.php-installation.outputs) }}\""
+        
+    - name: Download the repository
+      uses: 'actions/checkout@v4'
+    
+    #- name: Copy .env.test to .env.test.local
+    #  run: php -r "file_exists('.env.test.local') || copy('.env.test', '.env.test.local');"  
+
+    - name: Composer cache
+      id: 'composer-cache'
+      uses: 'actions/cache@v3'
+      with:
+        path: 'vendor'
+        key: "${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}"
+        restore-keys: |
+          ${{ runner.os }}-php-
+
+    - name: Composer installation
+      run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+    - name: Docker installation
+      id: docker-installation
+      uses: docker/setup-qemu-action@v3
+
+    #- name: Dump docker installation outputs
+    #  run: "echo \"${{ toJSON(steps.docker-installation.outputs) }}\""
+
+    - name: Symfony installation
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install curl -y
+        sudo apt-get install wget -y
+        wget https://get.symfony.com/cli/installer -O - | bash
+        curl -sS https://get.symfony.com/cli/installer | bash
+        export PATH="$HOME/.symfony5/bin:$PATH"
+        sudo mv $HOME/.symfony5/bin/symfony /usr/local/bin/symfony
+
+    #- name: Check symfony binary installed
+    #  run: "symfony -v"
+
+    - name: Run symfony app
+      run: "symfony server:start -d"
+
+    - name: Tests
+      run: "symfony php vendor/bin/phpunit tests/"
+
+  deploy:
+    needs: tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: TODO
+        run: echo TODO

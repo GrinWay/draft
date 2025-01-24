@@ -1,0 +1,32 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: false # nice, cuz #[AsMessageHandler] and any other autoconfigurations don't affect
+
+    App\Messenger\Command\:
+        resource: '../../src/Messenger/Command/*/Handler/'
+        tags:
+        -   name: 'messenger.message_handler'
+            bus: 'app.command.bus'
+            priority: 0
+
+    App\Messenger\Event\Handler\PriorityHigh\:
+        resource: '../../src/Messenger/Event/Handler/PriorityHigh/*'
+        tags:
+        -   name: 'messenger.message_handler'
+            bus: 'app.event.bus'
+            priority: 2
+
+    App\Messenger\Event\Handler\PriorityMiddle\:
+        resource: '../../src/Messenger/Event/Handler/PriorityMiddle/*'
+        tags:
+        -   name: 'messenger.message_handler'
+            bus: 'app.event.bus'
+            priority: 1
+
+    App\Messenger\Event\Handler\PriorityLow\:
+        resource: '../../src/Messenger/Event/Handler/PriorityLow/*'
+        tags:
+        -   name: 'messenger.message_handler'
+            bus: 'app.event.bus'
+            priority: 0

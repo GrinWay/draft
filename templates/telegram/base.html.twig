@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+{#// TODO: Telegram symfony twig component#}
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Telegram Web App{% endblock %}</title>
+
+    {% block head_inner %}{% endblock %}
+
+    {% block metas %}
+        <meta name="turbo-prefetch" content="false">
+    {% endblock %}
+
+    {% block stylesheets %}
+        {{ encore_entry_link_tags('telegram-web-app') }}
+    {% endblock %}
+
+    {% block javascripts %}
+        {{ encore_entry_script_tags('telegram-web-app') }}
+        <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    {% endblock %}
+
+</head>
+<body data-app-theme="dark">
+{% block menu %}{% endblock %}
+<div class="container overflow-clip"
+        {{ stimulus_controller('grinway/telegram/web-app', controllerValues={
+            userAgent: app.request.headers.get('User-Agent'),
+        }) }}
+>
+{#    <twig:dump></twig:dump>#}
+    {% block body %}{% endblock %}
+</div>
+</body>
+</html>
