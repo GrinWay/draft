@@ -42,7 +42,7 @@ jobs:
 
     - name: 'Lint twig'
       run: |
-        php bin/console lint:twig --format=github
+        php bin/console lint:twig templates --format=github
     
     - name: Create Database
       run: |
