@@ -7,7 +7,6 @@ name: Symfony
 
 on:
   workflow_dispatch: ~
-  #repository_dispatch: ~
   #push:
   #  branches: [ "main" ]
   #pull_request:
@@ -29,10 +28,6 @@ jobs:
 
     - uses: actions/checkout@v4
     
-    - name: 'Lint twig'
-      run: |
-        php bin/console lint:twig --format=github
-    
     - name: Cache Composer packages
       id: composer-cache
       uses: actions/cache@v3
@@ -44,6 +39,10 @@ jobs:
     
     - name: Install Dependencies
       run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+    - name: 'Lint twig'
+      run: |
+        php bin/console lint:twig --format=github
     
     - name: Create Database
       run: |
