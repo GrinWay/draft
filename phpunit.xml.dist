@@ -23,9 +23,6 @@
         <!-- ... -->
     </coverage>
     <testsuites>
-        <testsuite name="tg">
-            <directory>tests/Functional/TelegramBot</directory>
-        </testsuite>
         <testsuite name="func">
             <directory>tests/Functional</directory>
         </testsuite>
@@ -38,6 +35,8 @@
 <!--        <bootstrap class="DAMA\DoctrineTestBundle\PHPUnit\PHPUnitExtension"/>-->
         <bootstrap class="Zenstruck\Foundry\PHPUnit\FoundryExtension"/>
         <bootstrap class="Zenstruck\Browser\Test\BrowserExtension"/>
+        <bootstrap class="Zenstruck\Mailer\Test\ZenstruckMailerTestBundle"/>
+		<bootstrap class="GrinWay\Telegram\Extension\Test\GrinWayTelegramForceRemoveTestWebhook"/>
     </extensions>
     <source ignoreIndirectDeprecations="true" restrictNotices="true" restrictWarnings="true">
         <include>

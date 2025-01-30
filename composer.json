@@ -15,6 +15,7 @@
     "doctrine/doctrine-bundle": "^2.13",
     "doctrine/doctrine-migrations-bundle": "^3.3",
     "doctrine/orm": "^3.3",
+    "easycorp/easyadmin-bundle": "*",
     "elgigi/commonmark-emoji": "^2.0",
     "embed/embed": "*",
     "endroid/installer": "^1.5",
@@ -26,6 +27,8 @@
     "gedmo/doctrine-extensions": "*",
     "gesdinet/jwt-refresh-token-bundle": "^1.4",
     "gregwar/image": "2",
+    "grinway/service-bundle": "0.0.6",
+    "grinway/telegram-bundle": "^0.0.0",
     "guzzlehttp/promises": "^2.0",
     "khanamiryan/qrcode-detector-decoder": "^2.0",
     "knplabs/knp-paginator-bundle": "^6.6",
@@ -78,6 +81,7 @@
     "symfony/property-access": "7.2.*",
     "symfony/property-info": "7.2.*",
     "symfony/rate-limiter": "7.2.*",
+    "symfony/requirements-checker": "^2.0",
     "symfony/runtime": "7.2.*",
     "symfony/security-bundle": "7.2.*",
     "symfony/security-csrf": "7.2.*",
@@ -109,6 +113,10 @@
     {
       "type": "vcs",
       "url": "https://github.com/moust/Paint.git"
+    },
+    {
+      "type": "path",
+      "url": "bundles/GrinWay/telegram-bundle"
     }
   ],
   "config": {
@@ -147,14 +155,14 @@
   "scripts": {
     "auto-scripts": {
       "assets:install": "symfony-cmd",
-      "telegram:set_webhook": "symfony-cmd"
+      "cache:clear --env dev": "symfony-cmd",
+      "fos:js-routing:dump": "symfony-cmd"
     },
     "post-install-cmd": [
       "@auto-scripts"
     ],
     "post-update-cmd": [
-      "@auto-scripts",
-      "rm -rf ./var/cache"
+      "@auto-scripts"
     ]
   },
   "conflict": {
@@ -182,6 +190,7 @@
     "symfony/var-dumper": "7.2.*",
     "symfony/web-profiler-bundle": "7.2.*",
     "zenstruck/browser": "^1.9",
-    "zenstruck/foundry": "^2.3"
+    "zenstruck/foundry": "^2.3",
+    "zenstruck/mailer-test": "^1.4"
   }
 }

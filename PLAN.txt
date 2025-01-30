@@ -433,7 +433,9 @@ SYMFONY CONFIG COMPONENT (Cache, TreeBuilder)
 	+ ? зачем для TreeBuilder(name: 'ЗАЧЕМ ИМЯ') иметь имя (это Processor не учитывает ключ rootNode)
 TREE BUILDER
 SYMFONY BUNDLES
-	?
+	?	
+	+ ? Можно ли в AbstractBundle::configure() определить env переменную
+	 (нет, но это и не нужно, брось исключение позже)
 	? не могу представить в каком случае может понадобиться настраивать пакет в зависимости от другого пакета "Simplify Configuration Of Multiple Bundles"
 	? как пользоваться AbstractBundle::extension
 	+ попробовать variableNode в Configurator (может быть чем угодно)
@@ -2222,46 +2224,122 @@ Telegram Bot Api
 PRODUCTION
 	cache: https://symfony.com/doc/current/components/cache/adapters/apcu_adapter.html
 	cache: будет полезно поставить Shedule для выполнения php bin/console cache:pool:prune раз в неделю
-	https://symfony.com/doc/current/setup/web_server_configuration.html#nginx
-	
-	Протестируй отправку email with "ZENSTRUCK MAILER TEST"
-		https://github.com/zenstruck/mailer-test
-	?
-	process manager Supervisor or systemd for messenger	
-	проверить timezone у messenger doctrine
-	Утилиты для управления ENV_VAR https://docs.platform.sh/guides/symfony/environment-variables.html?utm_source=symfony-cloud-sign-up&utm_medium=backlink&utm_campaign=Symfony-Cloud-sign-up&utm_content=docs
-	custom env loader (configuraiton)
-	https://symfony.com/doc/current/contributing/code/conventions.html
-	SYMFONY DEPLOYMENT https://symfony.com/doc/current/deployment.html
-	??? запустить "php bin/console lint:twig --format=github" GitHub Actions
-	PUSH (Firebase) реализовать на https хостинге (по сути на реальном сайте)
-		https://firebase.google.com/docs/cloud-messaging/js/client?authuser=0#next_steps
-	https://symfony.com/doc/current/contributing/community/releases.html
-	Enable APC and then use this cache to save something on local server
+	+ php timezone = UTC
+	- php bin/console lint:twig --format=github
 	UPGRADING TO A NEW MAJOR
 		https://symfony.com/doc/current/setup/upgrade_major.html
 	https://stackoverflow.com/questions/24448261/how-to-install-apcu-in-windows
-	Очисти OPcache на развёрнутом сервере
-		\opcache_reset()
-	mcHost исполнить php --ini
-		и выяснить есть ли opcache
-	mcHost есть ли у них docker
-	SYMFONY FORMATS/STANDARDS
-		https://symfony.com/doc/current/contributing/documentation/format.html
-		https://symfony.com/doc/current/contributing/documentation/standards.html
-	один docker container пытается получить доступ к БД, которая работает на другом docker container
+	+ composer require symfony/requirements-checker
+	+ ?один docker container пытается получить доступ к БД, которая работает на другом docker container
 		НО выдаётся SQLSTATE[HY000] [2002] Operation timed out
 		подозреваю что дело в том как Symfony парсит dsn
 		потому что phpmyadmin работает на другом docker container и прекрасно читает БД
-Оптимизировать готовый сайт
-	для каждой страницы определить <link rel="preload"> с использованием компонента https://symfony.com/doc/current/web_link.html
-		на каждую картинку, чтобы сайт считался более быстрым с точки зрения LCP https://symfony.com/bundles/ux-lazy-image/current/index.html#largest-contentful-paint-lcp-and-web-performance-considerations
-		$this->addLink($request, (new Link('preload', $publicImgFilename))->withAttribute('as', 'image'));
-		это будет + к поисковым запросам
+		(
+			чтобы docker containers могли взаимодействовать, они должны иметь одноимённые network (type: bridge)
+			или как минимум просто быть на одной и той же default bridge network
+		)
+		
+Grigory Koblitskiy <grin180898@outlook.com>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+чекнуть понятность имён
+проверить код контроллера ещё раз
+Git hub actions tests
+Under class names
+/**
+ * @author Grigory Koblitskiy <grin180898@outlook.com>
+ */
+
+Чем может быть полезен тег ux.twig_component.twig_renderer
+
+
+service-bundle make a currency service:
+Here are some popular HTTP API services for currency conversions that you can use:
+
+1. **ExchangeRate-API**
+   - Website: [https://www.exchangerate-api.com/](https://www.exchangerate-api.com/)
+   - Features: Free tier with limited requests, supports over 170 currencies, and offers historical data.
+   
+2. **Open Exchange Rates**
+   - Website: [https://openexchangerates.org/](https://openexchangerates.org/)
+   - Features: Offers real-time and historical exchange rates, as well as currency conversion. The free plan has limited access.
+
+3. **Fixer.io**
+   - Website: [https://fixer.io/](https://fixer.io/)
+   - Features: Free API for foreign exchange rates, supports 170+ currencies, and provides data in real-time.
+
+4. **CurrencyLayer**
+   - Website: [https://currencylayer.com/](https://currencylayer.com/)
+   - Features: Real-time and historical exchange rates, supports over 170 currencies, and provides a free tier with limited access.
+
+5. **XE.com**
+   - Website: [https://xecdapi.xe.com/](https://xecdapi.xe.com/)
+   - Features: Real-time exchange rates, currency conversions, and historical data. Provides both free and premium plans.
+
+6. **Alpha Vantage**
+   - Website: [https://www.alphavantage.co/](https://www.alphavantage.co/)
+   - Features: Known for financial data APIs, they also provide currency conversion and exchange rates.
+
+7. **OANDA**
+   - Website: [https://www.oanda.com/](https://www.oanda.com/)
+   - Features: Offers currency conversion and historical exchange rates, used by financial professionals, but it is mainly a premium service.
+
+8. **X-Rates API**
+   - Website: [https://x-rates.com/](https://x-rates.com/)
+   - Features: Provides exchange rates data and currency conversion, both in real-time and historical formats.
+
+9. **CurrencyConverterAPI**
+   - Website: [https://www.currencyconverterapi.com/](https://www.currencyconverterapi.com/)
+   - Features: Offers currency conversion, historical data, and exchange rate trends. Offers a free and paid version.
+
+10. **TrueLayer**
+    - Website: [https://truelayer.com/](https://truelayer.com/)
+    - Features: Primarily known for financial APIs and banking integrations, TrueLayer also offers currency conversion services.
+
+Each of these services has different features and pricing structures, so you can choose the one that best fits your needs based on factors like the number of API calls you need, currency coverage, and whether you need additional financial data.
+
+
+
+ДЕЛАТЬ web-app-bundle и перемещать логику
+WebApp
+public function testAllGetRoutesWithFakeParameters(): void
+    {
+        $router = self::getContainer()->get('router');
+        \assert($router instanceof RouterInterface);
+
+        foreach ($router->getRouteCollection() as $router) {
+            \dump($router->getPath());
+            if (\in_array('GET', $router->getMethods())) {
+                $requirements = $router->getRequirements();
+                $uri = $router->getPath();
+
+                $this->browser()
+                    ->visit($uri)
+                    ->assertSuccessful()//
+                ;
+            }
+        }
+    }
+// TODO: BaseKernelBrowser
 
 RRR?: (повторный просмотр) + WATCH ALL RAYAN WAVER VIDEOS
 RRR: READ БАНДА ЧЕТЫРЁХ
 RRR: SYMFONY DEMO посмотреть как реализованы лучшие подходы
+
+? А как переводить с помощью translator service прямо в бандле (как импортировать файлы переводов)
 
 Реализуй с помощюь mercure + turbo stream смену title favicon для: (основываясь на turbo:<events>)
 	default favicon (/assets/images/favicon/favicon.svg)
@@ -2269,9 +2347,7 @@ RRR: SYMFONY DEMO посмотреть как реализованы лучши�
 	загрузки (иммитация загрузки анимацией svg, иммитация потому что turbo drive работает) (/assets/images/favicon/favicon_loading.svg)
 
 TODO
-	регайся https://packagist.org/
 	https://symfony.com/doc/current/bundles/best_practices.html
-	Все переводы бандлов поместить в домен grinway, то есть имя домена === имя бандла
 	Все bundles and extensions сделать бандлами extends AbstractBundle
 	https://symfony.com/doc/current/bundles/configuration.html#using-the-abstractbundle-class
 	привести в порядок документацию:
@@ -2404,6 +2480,7 @@ TODO
 		checkout main
 		если у бандла есть public resources реализуй сервис, который для asset() возвратит валидный путь
 			ресурсы будут перемещены в root после php bin/console assets:install
+			Symfony\Component\Asset\PackageInterface
 		Zenstruck/Foundry: сделать WebTestExtensionTrait и использовать их в своём WebTestBrowser
 		// TODO: Telegram symfony twig component
 	GsEnvProcessor
@@ -2507,12 +2584,15 @@ TODO
 	Создай рецепты для бандлов
 		https://symfony.com/doc/current/setup/flex_private_recipes.html
 	
-Переключиться на prod и понять почему 500 ошибка
-Придумать ситуацию, в которой ты будешь использовать kernel.fragment_renderer
-	https://symfony.com/doc/current/reference/dic_tags.html#kernel-fragment-renderer
 SYMFONY COMPONENTS: https://symfony.com/components
 
-###> probably somewhen
+Оптимизировать готовый сайт
+	для каждой страницы определить <link rel="preload"> с использованием компонента https://symfony.com/doc/current/web_link.html
+		на каждую картинку, чтобы сайт считался более быстрым с точки зрения LCP https://symfony.com/bundles/ux-lazy-image/current/index.html#largest-contentful-paint-lcp-and-web-performance-considerations
+		$this->addLink($request, (new Link('preload', $publicImgFilename))->withAttribute('as', 'image'));
+		это будет + к поисковым запросам
+
+###> probably somewhen (or never)
 SYMFONY MULTIPLE KERNELS in a single symfony application
 	https://symfony.com/doc/current/configuration/multiple_kernels.html
 PHP FRANKEN
@@ -2531,3 +2611,5 @@ RECTOR
 https://github.com/search?q=topic%3Asymfony-bundle&type=repositories
 https://symfony.com/doc/current/create_framework/index.html
 Framework Configuration Reference https://symfony.com/doc/current/reference/configuration/framework.html#reference-cache-prefix-seed
+Придумать ситуацию, в которой ты будешь использовать kernel.fragment_renderer
+	https://symfony.com/doc/current/reference/dic_tags.html#kernel-fragment-renderer

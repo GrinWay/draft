@@ -4,21 +4,17 @@ namespace App\Controller;
 
 use App\Exception\Telegram\NotEnoughRequestPayloadTelegramException;
 use App\Form\TelegramWebAppMainType;
-use App\Service\Telegram\Telegram;
-use App\Service\Telegram\TelegramLabeledPrice;
-use App\Service\Telegram\TelegramLabeledPrices;
-use App\Telegram\Contract\UpdateHandlerInterface;
+use GrinWay\Telegram\Service\Telegram;
+use GrinWay\Telegram\Type\TelegramLabeledPrice;
+use GrinWay\Telegram\Type\TelegramLabeledPrices;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
-use Symfony\Component\DependencyInjection\ServiceLocator;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Notifier\ChatterInterface;
 use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 // https://core.telegram.org/bots/api
 #[Route('/telegram', 'app_')]
@@ -28,9 +24,7 @@ class TelegramController extends AbstractController
         private readonly ?ChatterInterface                                           $chatter,
         private readonly PropertyAccessorInterface                                   $pa,
         private readonly RequestStack                                                $requestStack,
-        private readonly ServiceLocator                                              $updateHandlersServiceLocator,
-        private readonly Telegram                                                    $telegram,
-        private readonly HttpClientInterface                                         $telegramClient,
+        //private readonly Telegram                                                    $telegram,
         #[Autowire('%env(APP_TELEGRAM_Y_KASSA_API_TOKEN)%')] private readonly string $telegramYKassaToken,
     )
     {
@@ -147,31 +141,5 @@ class TelegramController extends AbstractController
                 'Item 3',
             ],
         ]);
-    }
-
-    #[Route('/webhook', 'webhook', methods: ['POST'])]
-    public function webhook(): Response
-    {
-        $request = $this->requestStack->getCurrentRequest();
-        if (null === $request) {
-            $payload = [];
-        } else {
-            $payload = $request->getPayload()->all();
-        }
-
-        foreach ($payload as $updateField => $value) {
-            if ($this->updateHandlersServiceLocator->has($updateField)) {
-                /** @var UpdateHandlerInterface $updateHandler */
-                $updateHandler = $this->updateHandlersServiceLocator->get($updateField);
-
-                if ($updateHandler->supports($value)) {
-                    $updateHandler->handle($value);
-                }
-            }
-        }
-
-        \dump($payload);
-
-        return new JsonResponse(null, 200);
     }
 }

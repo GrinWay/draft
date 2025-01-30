@@ -1,5 +1,5 @@
 twig:
-    strict_variables: false
+    strict_variables: true
     file_name_pattern: '*.twig'
     globals:
         app_text_logo: '%env(APP_TEXT_LOGO)%'

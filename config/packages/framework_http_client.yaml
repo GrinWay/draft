@@ -16,16 +16,6 @@ framework:
                     Authorization: 'token %env(APP_GITHUB_API_AUTH_TOKEN)%'
                     Accept: 'application/vnd.github+json'
 
-            telegram.client:
-                base_uri: 'https://api.telegram.org/bot%env(APP_TELEGRAM_TOKEN)%/'
-                headers:
-                    Content-Type: 'application/json'
-
-            telegram.file.client:
-                base_uri: 'https://api.telegram.org/file/bot%env(APP_TELEGRAM_TOKEN)%/'
-                headers:
-                    Content-Type: 'application/json'
-
             test.headers.client:
                 base_uri: 'https://github.com/'
                 headers:

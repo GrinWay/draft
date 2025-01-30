@@ -2,9 +2,7 @@
 
 namespace App\Controller;
 
-use App\Service\Telegram\Telegram;
-use App\Service\Telegram\TelegramLabeledPrice;
-use App\Service\Telegram\TelegramLabeledPrices;
+use GrinWay\Telegram\Service\Telegram;
 use Knp\Component\Pager\PaginatorInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use parallel\Channel;
@@ -17,19 +15,13 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Mercure\HubInterface;
 use Symfony\Component\Mercure\Update;
-use Symfony\Component\Notifier\Bridge\Telegram\Reply\Markup\Button\InlineKeyboardButton;
-use Symfony\Component\Notifier\Bridge\Telegram\Reply\Markup\Button\KeyboardButton;
-use Symfony\Component\Notifier\Bridge\Telegram\Reply\Markup\ForceReply;
-use Symfony\Component\Notifier\Bridge\Telegram\Reply\Markup\InlineKeyboardMarkup;
-use Symfony\Component\Notifier\Bridge\Telegram\Reply\Markup\ReplyKeyboardMarkup;
-use Symfony\Component\Notifier\Bridge\Telegram\TelegramOptions;
 use Symfony\Component\Notifier\ChatterInterface;
-use Symfony\Component\Notifier\Message\ChatMessage;
 use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 use Symfony\UX\Turbo\TurboBundle;
 
 class HomeController extends AbstractController
@@ -42,6 +34,9 @@ class HomeController extends AbstractController
         #[Autowire('%env(resolve:APP_URL)%')] private readonly string                $appUrl,
         #[Autowire('%env(APP_TELEGRAM_Y_KASSA_API_TOKEN)%')] private readonly string $telegramYKassaApiToken,
         private readonly JWTTokenManagerInterface                                    $jwtManager,
+        #[Autowire('%env(APP_TELEGRAM_BOT_API_TOKEN)%')] private readonly string     $telegramBotApiToken,
+        #[Autowire('%env(resolve:APP_HOST)%')] private readonly string               $host,
+        private readonly TranslatorInterface                                         $t,
     )
     {
     }
@@ -91,21 +86,21 @@ class HomeController extends AbstractController
      */
     #[Route('/', name: 'app_home', options: ['expose' => true])]
     public function home(
-        Request                                         $request,
-        string                                          $projectDir,
-        HttpClientInterface                             $telegramClient,
-        SerializerInterface                             $serializer,
-        ?ChatterInterface                               $chatter,
-        #[Autowire('%env(APP_TELEGRAM_TOKEN)%')] string $appTelegramToken,
-        Telegram                                        $telegram,
-        PropertyAccessorInterface                       $pa,
-        #[Autowire('%kernel.trusted_proxies%')]     $kernelParam,
+        Request                                              $request,
+        string                                               $projectDir,
+        HttpClientInterface                                  $grinwayTelegramClient,
+        SerializerInterface                                  $serializer,
+        ?ChatterInterface                                    $chatter,
+        #[Autowire('%env(APP_TELEGRAM_TOKEN)%')] string      $appTelegramToken,
+        Telegram                                             $telegram,
+        PropertyAccessorInterface                            $pa,
+        #[Autowire('%kernel.trusted_proxies%')]              $kernelParam,
+        #[Autowire('%env(APP_TELEGRAM_Y_KASSA_API_TOKEN)%')] $providerToken,
     ): Response
     {
-        \dump($kernelParam);
-
         $template = 'home/index.html.twig';
-        $parameters = [];
+        $parameters = [
+        ];
         $response = $this->render($template, $parameters);
         return $response;
     }

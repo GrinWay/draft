@@ -1,7 +1,7 @@
 import { Controller } from '@hotwired/stimulus'
-import { ThemeManager, themeManager } from '../../../../../js/grinway/themeManager'
 import Routing from 'fos-router'
-import { typeChecker } from "../../../../../js/grinway/checker";
+import { themeManager } from '@grinway/theme-manager'
+import { typeChecker } from "@grinway/type-checker"
 
 // TODO: Telegram symfony twig component
 /**
@@ -22,7 +22,6 @@ class Telegram extends Controller {
     userAgentAndroidVersion = null
     userAgentSdkVersion = null
     userAgentPerformanceClass = null
-
 
     /**
      * Stimulus lifecycle callback
@@ -463,7 +462,7 @@ class Telegram extends Controller {
     setTheme({ theme, bgColor, color }) {
         let appThemeBgColor = null
 
-        const callback = wonThemeEl => appThemeBgColor = themeManager.getStyleProp(wonThemeEl, ThemeManager.THEME_BG_COLOR_CSS_VAR)
+        const callback = wonThemeEl => appThemeBgColor = themeManager.getStyleProp(wonThemeEl, themeManager.themeBgColorCssVar)
         themeManager.set({ theme, bgColor, color, callback })
 
         this.tg?.setHeaderColor(appThemeBgColor)

@@ -24,7 +24,7 @@ class EmailController extends AbstractController
     #[Route('/test', name: 'test', methods: ['GET'])]
     public function test(): Response
     {
-        $notification = (new Notification('[TEST] Проврочка mailer/notifier', ['email']))
+        $notification = (new Notification('[TEST] TEST', ['email']))
             ->content('Checking the mailer');
         $recipient = new Recipient(
             $this->appTestEmail,
