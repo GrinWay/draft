@@ -27,8 +27,8 @@
     "gedmo/doctrine-extensions": "*",
     "gesdinet/jwt-refresh-token-bundle": "^1.4",
     "gregwar/image": "2",
-    "grinway/service-bundle": "0.0.6",
-    "grinway/telegram-bundle": "^0.0.0",
+    "grinway/service-bundle": "^1.0.0",
+    "grinway/telegram-bundle": "^1.0",
     "guzzlehttp/promises": "^2.0",
     "khanamiryan/qrcode-detector-decoder": "^2.0",
     "knplabs/knp-paginator-bundle": "^6.6",
@@ -116,7 +116,7 @@
     },
     {
       "type": "path",
-      "url": "bundles/GrinWay/telegram-bundle"
+      "url": "bundles/GrinWay/service-bundle"
     }
   ],
   "config": {

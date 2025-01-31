@@ -2245,27 +2245,6 @@ Grigory Koblitskiy <grin180898@outlook.com>
 
 
 
-
-
-
-
-
-
-
-
-
-
-чекнуть понятность имён
-проверить код контроллера ещё раз
-Git hub actions tests
-Under class names
-/**
- * @author Grigory Koblitskiy <grin180898@outlook.com>
- */
-
-Чем может быть полезен тег ux.twig_component.twig_renderer
-
-
 service-bundle make a currency service:
 Here are some popular HTTP API services for currency conversions that you can use:
 
@@ -2340,6 +2319,7 @@ RRR: READ БАНДА ЧЕТЫРЁХ
 RRR: SYMFONY DEMO посмотреть как реализованы лучшие подходы
 
 ? А как переводить с помощью translator service прямо в бандле (как импортировать файлы переводов)
+? Чем может быть полезен тег ux.twig_component.twig_renderer
 
 Реализуй с помощюь mercure + turbo stream смену title favicon для: (основываясь на turbo:<events>)
 	default favicon (/assets/images/favicon/favicon.svg)
