@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a22858af6002fe29b286b2751ee5b81a",
+    "content-hash": "70c685398c28eac225074c19859db3a1",
     "packages": [
         {
             "name": "ajaxray/php-watermark",
@@ -4287,14 +4287,15 @@
         },
         {
             "name": "grinway/service-bundle",
-            "version": "1.0.0",
+            "version": "1.1.0",
             "dist": {
                 "type": "path",
                 "url": "bundles/GrinWay/service-bundle",
-                "reference": "20414506691293a29384f7302ad107d88b9e02f5"
+                "reference": "37be229e6a0a71ca04fac80de8e42587edf9be7a"
             },
             "require": {
                 "endroid/installer": "^1",
+                "symfony/cache": "^7.2",
                 "symfony/console": "7.2.*",
                 "symfony/framework-bundle": "7.2.*",
                 "symfony/http-client": "7.2.*",
@@ -4305,7 +4306,6 @@
                 "symfony/serializer": "7.2.*",
                 "symfony/stimulus-bundle": "^2.22",
                 "symfony/string": "7.2.*",
-                "symfony/telegram-notifier": "7.2.*",
                 "symfony/translation": "7.2.*",
                 "symfony/validator": "^7.2",
                 "symfony/webpack-encore-bundle": "^2.2",
@@ -4316,6 +4316,7 @@
             },
             "require-dev": {
                 "phpunit/phpunit": "11.4",
+                "symfony/maker-bundle": "^1.62",
                 "symfony/phpunit-bridge": "^7.2",
                 "symfony/test-pack": "^1.0"
             },
@@ -4354,22 +4355,17 @@
         },
         {
             "name": "grinway/telegram-bundle",
-            "version": "1.0.3",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/GrinWay/telegram-bundle.git",
-                "reference": "afe7efa80e7a601031c9d2c8930fcc792b43d5b4"
-            },
+            "version": "1.1.0",
             "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/GrinWay/telegram-bundle/zipball/afe7efa80e7a601031c9d2c8930fcc792b43d5b4",
-                "reference": "afe7efa80e7a601031c9d2c8930fcc792b43d5b4",
-                "shasum": ""
+                "type": "path",
+                "url": "bundles/GrinWay/telegram-bundle",
+                "reference": "4e139577f04b352f7ab7206de39755c43c7e18ee"
             },
             "require": {
                 "endroid/installer": "^1",
-                "grinway/service-bundle": "^1.0.0",
+                "grinway/service-bundle": "^1.1",
                 "guzzlehttp/uri-template": "^1.0",
+                "symfony/cache": "^7.2",
                 "symfony/console": "^7.2",
                 "symfony/dotenv": "^7.2",
                 "symfony/emoji": "^7.2",
@@ -4407,7 +4403,6 @@
                     "GrinWay\\Telegram\\Tests\\": "tests/"
                 }
             },
-            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
             ],
@@ -4419,19 +4414,17 @@
             ],
             "description": "This bundle is intended to create telegram bots",
             "keywords": [
-                "Telegram-Bot-API",
                 "bundle",
                 "grinway",
                 "symfony",
                 "symfony-ux",
                 "telegram-bot",
+                "telegram-bot-api",
                 "telegram-bundle"
             ],
-            "support": {
-                "issues": "https://github.com/GrinWay/telegram-bundle/issues",
-                "source": "https://github.com/GrinWay/telegram-bundle/tree/v1.0.3"
-            },
-            "time": "2025-01-31T10:45:08+00:00"
+            "transport-options": {
+                "relative": true
+            }
         },
         {
             "name": "guzzlehttp/promises",
@@ -19112,7 +19105,7 @@
         }
     ],
     "aliases": [],
-    "minimum-stability": "stable",
+    "minimum-stability": "dev",
     "stability-flags": [],
     "prefer-stable": true,
     "prefer-lowest": false,

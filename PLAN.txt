@@ -2153,9 +2153,6 @@ Cross-Origin Resource Sharing
 Geolocation API
 ***
 Telegram Bot Api
-	1 Заметки
-	2 https://core.telegram.org/bots/webapps#initializing-mini-apps openInvoice
-	
 	All methods in the Bot API are case-insensitive.
 	All queries must be made using UTF-8.
 	Что за message_reaction
@@ -2211,8 +2208,6 @@ Telegram Bot Api
 	https://core.telegram.org/bots/api#setuseremojistatus
 	https://core.telegram.org/bots/webapps#initializing-mini-apps
 	
-	
-	
 	?
 	? Зачем в методе sendPoll, options[].text_entities
 	? Payment [description]: Не получилось сделать перенос слов
@@ -2238,58 +2233,20 @@ PRODUCTION
 			чтобы docker containers могли взаимодействовать, они должны иметь одноимённые network (type: bridge)
 			или как минимум просто быть на одной и той же default bridge network
 		)
++ ? Expected one of "bool", "int", "float", "string", but got one of "bool", "int", "float", "string", "array".
+	при конфигурировании другого бандла возникает ошибка что тип массива для этой опции не разрешён
+	конструкция '%env(default:grinway_service.currency.cache.lifetime:)%' внутренне преобразуется в array
+	но при конфигурировании других бандлов нужно использовать именно параметр этого бандла
+	но прям сразу его испльзовать нельзя, так как он ещё не разрешён в service container
+	(
+		да, верно, ты не можешь испльзовать параметр без env(default:) препроцессора для конфигурации другого bundle
+		потому что service container ещё не скомпилирован
 		
-Grigory Koblitskiy <grin180898@outlook.com>
-
-
-
-
-
-service-bundle make a currency service:
-Here are some popular HTTP API services for currency conversions that you can use:
-
-1. **ExchangeRate-API**
-   - Website: [https://www.exchangerate-api.com/](https://www.exchangerate-api.com/)
-   - Features: Free tier with limited requests, supports over 170 currencies, and offers historical data.
-   
-2. **Open Exchange Rates**
-   - Website: [https://openexchangerates.org/](https://openexchangerates.org/)
-   - Features: Offers real-time and historical exchange rates, as well as currency conversion. The free plan has limited access.
-
-3. **Fixer.io**
-   - Website: [https://fixer.io/](https://fixer.io/)
-   - Features: Free API for foreign exchange rates, supports 170+ currencies, and provides data in real-time.
-
-4. **CurrencyLayer**
-   - Website: [https://currencylayer.com/](https://currencylayer.com/)
-   - Features: Real-time and historical exchange rates, supports over 170 currencies, and provides a free tier with limited access.
-
-5. **XE.com**
-   - Website: [https://xecdapi.xe.com/](https://xecdapi.xe.com/)
-   - Features: Real-time exchange rates, currency conversions, and historical data. Provides both free and premium plans.
-
-6. **Alpha Vantage**
-   - Website: [https://www.alphavantage.co/](https://www.alphavantage.co/)
-   - Features: Known for financial data APIs, they also provide currency conversion and exchange rates.
-
-7. **OANDA**
-   - Website: [https://www.oanda.com/](https://www.oanda.com/)
-   - Features: Offers currency conversion and historical exchange rates, used by financial professionals, but it is mainly a premium service.
-
-8. **X-Rates API**
-   - Website: [https://x-rates.com/](https://x-rates.com/)
-   - Features: Provides exchange rates data and currency conversion, both in real-time and historical formats.
-
-9. **CurrencyConverterAPI**
-   - Website: [https://www.currencyconverterapi.com/](https://www.currencyconverterapi.com/)
-   - Features: Offers currency conversion, historical data, and exchange rate trends. Offers a free and paid version.
-
-10. **TrueLayer**
-    - Website: [https://truelayer.com/](https://truelayer.com/)
-    - Features: Primarily known for financial APIs and banking integrations, TrueLayer also offers currency conversion services.
-
-Each of these services has different features and pricing structures, so you can choose the one that best fits your needs based on factors like the number of API calls you need, currency coverage, and whether you need additional financial data.
-
+		а так же важно что испльзуя env preprocessor нельзя гарантировать что он не вернёт array!
+		для гарантирования типа, есть встроенные env preprocessor! string: например
+		
+		%env(string:default:parameter:)%
+	)
 
 
 ДЕЛАТЬ web-app-bundle и перемещать логику

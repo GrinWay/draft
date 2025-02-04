@@ -89,6 +89,8 @@ class HomeController extends AbstractController
         Request                                              $request,
         string                                               $projectDir,
         HttpClientInterface                                  $grinwayTelegramClient,
+        HttpClientInterface                                  $grinwayServiceCurrencyFixerLatestUsd,
+        #[Autowire('@grinway_service.currency')]             $currencyService,
         SerializerInterface                                  $serializer,
         ?ChatterInterface                                    $chatter,
         #[Autowire('%env(APP_TELEGRAM_TOKEN)%')] string      $appTelegramToken,
@@ -98,6 +100,43 @@ class HomeController extends AbstractController
         #[Autowire('%env(APP_TELEGRAM_Y_KASSA_API_TOKEN)%')] $providerToken,
     ): Response
     {
+		\dump($telegram->createInvoiceLink(
+			title: '$title',
+			description: '$description',
+			prices: [
+				['label' => 'l', 'amount' => '100000',], // one dollar
+				//['label' => 'l', 'amount' => '111',], // one dollar
+				//['label' => 'l', 'amount' => '1 end_dollar / 2',], // one dollar
+				//['label' => 'l', 'amount' => '1 end_dollar',], // one dollar
+				//['label' => 'l', 'amount' => '1end_dollar_more',], // one dollar
+
+				//['label' => 'l', 'amount' => 'one_dollar / 2',], // one dollar
+				
+				//['label' => 'l', 'amount' => 'start_dollar end_dollar',], // one dollar
+				
+				//['label' => 'l', 'amount' => 'start_dollar end_dollar_more',], // start_dollar passed_end
+				//['label' => 'l', 'amount' => 'start_dollar end_dollar_less',], // start_dollar+1 end_passed
+				//['label' => 'l', 'amount' => 'start_dollar end_dollar / 2',], // start_dollar+1 end_passed
+				//['label' => 'l', 'amount' => 'start_dollar end_dollar_more',], // start_dollar+1 end_passed
+				//['label' => 'l', 'amount' => 'start_dollar-1 end_dollar_more',], // start_dollar end passed
+				//['label' => 'l', 'amount' => '9799',], // start_dollar end passed
+			
+				//['label' => 'l', 'amount' => 'start_dollar+1 end_dollar_less',], // passed
+				//['label' => 'l', 'amount' => 'start_dollar+1 end_dollar / 2',], // passed
+				//['label' => 'l', 'amount' => 'start_dollar+1 end_dollar_more',], // passed
+			],
+			providerToken: $providerToken,
+			currency: 'RUB',
+		));
+		
+		//$response = $grinwayServiceCurrencyFixerLatestUsd->request('GET', '');
+		//\dump(
+			//$serializer->decode($response->getContent(), 'json'),
+		//);
+		
+		//\dump($currencyService->transferAmountFromTo('100', 'USD', 'RUB'));
+		
+		
         $template = 'home/index.html.twig';
         $parameters = [
         ];
